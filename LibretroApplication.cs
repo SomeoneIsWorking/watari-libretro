@@ -12,7 +12,7 @@ public class LibretroApplication(WatariContext context)
 {
     private RetroWrapper? retro;
     private readonly string coresDir = context.PathCombine("cores");
-    private readonly Dictionary<retro_key, bool> keyStates = [];
+    private readonly Dictionary<uint, bool> buttonStates = [];
     public event Action<FrameData> OnFrameReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
     public event Action<string> OnDownloadComplete = delegate { };
@@ -110,8 +110,10 @@ public class LibretroApplication(WatariContext context)
         retro.OnSample = (sample) => { /* TODO: audio */ };
         retro.OnCheckInput = (port, device, index, id) =>
         {
-            if (keyStates.TryGetValue((retro_key)id, out var pressed))
-                return pressed;
+            if (device == RetroBindings.RETRO_DEVICE_JOYPAD && port == 0 && index == 0)
+            {
+                return buttonStates.TryGetValue(id, out var pressed) && pressed;
+            }
             return false;
         };
     }
@@ -145,14 +147,44 @@ public class LibretroApplication(WatariContext context)
     public void SendKeyDown(string key)
     {
         Console.WriteLine($"Key Down: {key}");
-        if (Enum.TryParse<retro_key>(key, true, out var k))
-            keyStates[k] = true;
+        uint id = key switch
+        {
+            "RETRO_DEVICE_ID_JOYPAD_B" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_B,
+            "RETRO_DEVICE_ID_JOYPAD_Y" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_Y,
+            "RETRO_DEVICE_ID_JOYPAD_SELECT" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_SELECT,
+            "RETRO_DEVICE_ID_JOYPAD_START" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_START,
+            "RETRO_DEVICE_ID_JOYPAD_UP" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_UP,
+            "RETRO_DEVICE_ID_JOYPAD_DOWN" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_DOWN,
+            "RETRO_DEVICE_ID_JOYPAD_LEFT" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_LEFT,
+            "RETRO_DEVICE_ID_JOYPAD_RIGHT" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_RIGHT,
+            "RETRO_DEVICE_ID_JOYPAD_A" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_A,
+            "RETRO_DEVICE_ID_JOYPAD_X" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_X,
+            "RETRO_DEVICE_ID_JOYPAD_L" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_L,
+            "RETRO_DEVICE_ID_JOYPAD_R" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_R,
+            _ => 0
+        };
+        buttonStates[id] = true;
     }
 
     public void SendKeyUp(string key)
     {
         Console.WriteLine($"Key Up: {key}");
-        if (Enum.TryParse<retro_key>(key, true, out var k))
-            keyStates[k] = false;
+        uint id = key switch
+        {
+            "RETRO_DEVICE_ID_JOYPAD_B" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_B,
+            "RETRO_DEVICE_ID_JOYPAD_Y" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_Y,
+            "RETRO_DEVICE_ID_JOYPAD_SELECT" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_SELECT,
+            "RETRO_DEVICE_ID_JOYPAD_START" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_START,
+            "RETRO_DEVICE_ID_JOYPAD_UP" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_UP,
+            "RETRO_DEVICE_ID_JOYPAD_DOWN" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_DOWN,
+            "RETRO_DEVICE_ID_JOYPAD_LEFT" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_LEFT,
+            "RETRO_DEVICE_ID_JOYPAD_RIGHT" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_RIGHT,
+            "RETRO_DEVICE_ID_JOYPAD_A" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_A,
+            "RETRO_DEVICE_ID_JOYPAD_X" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_X,
+            "RETRO_DEVICE_ID_JOYPAD_L" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_L,
+            "RETRO_DEVICE_ID_JOYPAD_R" => RetroBindings.RETRO_DEVICE_ID_JOYPAD_R,
+            _ => 0
+        };
+        buttonStates[id] = false;
     }
 }

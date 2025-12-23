@@ -54,41 +54,45 @@ const handleKeyDown = (e: KeyboardEvent) => {
     return;
   }
   const keyMap: Record<string, string> = {
-    ArrowUp: "RETROK_UP",
-    ArrowDown: "RETROK_DOWN",
-    ArrowLeft: "RETROK_LEFT",
-    ArrowRight: "RETROK_RIGHT",
-    z: "RETROK_z",
-    x: "RETROK_x",
-    a: "RETROK_a",
-    s: "RETROK_s",
-    q: "RETROK_q",
-    w: "RETROK_w",
+    arrowup: "RETRO_DEVICE_ID_JOYPAD_UP",
+    arrowdown: "RETRO_DEVICE_ID_JOYPAD_DOWN",
+    arrowleft: "RETRO_DEVICE_ID_JOYPAD_LEFT",
+    arrowright: "RETRO_DEVICE_ID_JOYPAD_RIGHT",
+    z: "RETRO_DEVICE_ID_JOYPAD_A",
+    x: "RETRO_DEVICE_ID_JOYPAD_B",
+    a: "RETRO_DEVICE_ID_JOYPAD_X",
+    s: "RETRO_DEVICE_ID_JOYPAD_Y",
+    d: "RETRO_DEVICE_ID_JOYPAD_L",
+    c: "RETRO_DEVICE_ID_JOYPAD_R",
   };
-  const retroKey = keyMap[e.key.toLowerCase()] || e.key.toUpperCase();
-  LibretroApplication.SendKeyDown(retroKey);
-  e.preventDefault();
+  const retroKey = keyMap[e.key.toLowerCase()];
+  if (retroKey !== undefined) {
+    LibretroApplication.SendKeyDown(retroKey);
+    e.preventDefault();
+  }
 };
 
 const handleKeyUp = (e: KeyboardEvent) => {
   if (!store.isRunning) {
     return;
   }
-  const keyMap: Record<string, string> = {
-    ArrowUp: "RETROK_UP",
-    ArrowDown: "RETROK_DOWN",
-    ArrowLeft: "RETROK_LEFT",
-    ArrowRight: "RETROK_RIGHT",
-    z: "RETROK_z",
-    x: "RETROK_x",
-    a: "RETROK_a",
-    s: "RETROK_s",
-    q: "RETROK_q",
-    w: "RETROK_w",
-  };
-  const retroKey = keyMap[e.key.toLowerCase()] || e.key.toUpperCase();
-  LibretroApplication.SendKeyUp(retroKey);
   e.preventDefault();
+  const keyMap: Record<string, string> = {
+    arrowup: "RETRO_DEVICE_ID_JOYPAD_UP",
+    arrowdown: "RETRO_DEVICE_ID_JOYPAD_DOWN",
+    arrowleft: "RETRO_DEVICE_ID_JOYPAD_LEFT",
+    arrowright: "RETRO_DEVICE_ID_JOYPAD_RIGHT",
+    z: "RETRO_DEVICE_ID_JOYPAD_A",
+    x: "RETRO_DEVICE_ID_JOYPAD_B",
+    a: "RETRO_DEVICE_ID_JOYPAD_X",
+    s: "RETRO_DEVICE_ID_JOYPAD_Y",
+    q: "RETRO_DEVICE_ID_JOYPAD_L",
+    w: "RETRO_DEVICE_ID_JOYPAD_R",
+  };
+  const retroKey = keyMap[e.key.toLowerCase()];
+  if (retroKey !== undefined) {
+    LibretroApplication.SendKeyUp(retroKey);
+  }
 };
 </script>
 
@@ -102,9 +106,7 @@ const handleKeyUp = (e: KeyboardEvent) => {
       />
       <main class="game-area" :class="{ 'full-screen': store.isRunning }">
         <GameDisplay :frame="frame" :full-screen="store.isRunning" />
-        <Controls
-          v-if="!store.isRunning"
-        />
+        <Controls v-if="!store.isRunning" />
       </main>
     </div>
     <Toast />
