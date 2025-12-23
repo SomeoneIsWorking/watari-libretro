@@ -10,7 +10,7 @@ namespace watari_libretro;
 
 public class LibretroApplication(WatariContext context)
 {
-    private RetroWrapper? retro;
+    private RetroRunner? runner;
     private readonly string coresDir = context.PathCombine("cores");
     private readonly Dictionary<uint, bool> buttonStates = [];
     public event Action<FrameData> OnFrameReceived = delegate { };
@@ -59,12 +59,15 @@ public class LibretroApplication(WatariContext context)
     };
 
 
-    public void LoadCore(string name)
+    public async Task LoadCore(string name)
     {
         var dylibPath = Path.Combine(coresDir, $"{name}_libretro.dylib");
         if (!File.Exists(dylibPath))
             throw new Exception("Download the core first");
-        retro = new RetroWrapper();
+
+        await Stop();
+
+        var retro = new RetroWrapper();
         retro.LoadCore(dylibPath);
         retro.OnFrame = (frame, w, h) =>
         {
@@ -116,25 +119,31 @@ public class LibretroApplication(WatariContext context)
             }
             return false;
         };
+        runner = new RetroRunner(retro);
     }
 
     public void LoadGame(string gamePath)
     {
-        if (retro == null) throw new Exception("Load core first");
-        retro.LoadGame(gamePath);
+        if (runner == null) throw new Exception("Load core first");
+        runner.LoadGame(gamePath);
     }
 
     public void Run()
     {
-        if (retro == null) throw new Exception("Load core and game first");
-        Task.Run(() =>
+        if (runner == null)
         {
-            while (true)
-            {
-                retro.Run();
-                Thread.Sleep(16);
-            }
-        });
+            throw new Exception("Load core and game first");
+        }
+        runner.Start();
+    }
+
+    public async Task Stop()
+    {
+        if (runner != null)
+        {
+            await runner.Stop();
+            runner = null;
+        }
     }
 
     public IEnumerable<string> ListDownloadedCores()
