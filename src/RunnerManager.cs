@@ -1,36 +1,28 @@
 using System.Diagnostics;
 using System.IO.Pipes;
-using System.Text.Json;
+using System.Linq.Expressions;
+using MessagePack;
 
 namespace watari_libretro;
 
 public class RunnerManager<THandler> where THandler : IRunnerHandler
 {
-    private struct RunnerCall
-    {
-        public string Method { get; set; }
-        public int Id { get; set; }
-        public JsonElement Data { get; set; }
-    }
-
-    private struct RunnerResponse
-    {
-        public int Id { get; set; }
-        public string Status { get; set; }
-        public object? Result { get; set; }
-    }
-
-    private struct RunnerEvent
-    {
-        public string Event { get; set; }
-        public JsonElement Data { get; set; }
-    }
     private Process? runnerProcess;
-    private NamedPipeServerStream? pipeServer;
-    private readonly string pipeName = $"w{Guid.NewGuid().ToString("N")[..8]}";
-    private RunnerProxy? runnerProxy;
-    private readonly Dictionary<int, TaskCompletionSource<object?>> pendingRequests = new();
-    private readonly object pipeLock = new();
+    private NamedPipeServerStream? commandPipe;
+    private NamedPipeServerStream? responsePipe;
+    private readonly string commandPipeName = $"w{Guid.NewGuid().ToString("N")[..8]}c";
+    private readonly string responsePipeName = $"w{Guid.NewGuid().ToString("N")[..8]}r";
+    private readonly Dictionary<int, TaskCompletionSource<object?>> pendingRequests = [];
+    private readonly Dictionary<string, (Delegate handler, Type argType)> eventHandlers = [];
+    private int nextId = 0;
+
+    private readonly Lock writePipeLock = new();
+
+    private BinaryWriter? writer;
+    private DataReceivedEventHandler? outputHandler;
+    private DataReceivedEventHandler? errorHandler;
+    private EventHandler? exitedHandler;
+
 
     public async Task StartRunner()
     {
@@ -38,16 +30,33 @@ public class RunnerManager<THandler> where THandler : IRunnerHandler
         // Start runner process
         runnerProcess = new Process();
         runnerProcess.StartInfo.FileName = Environment.ProcessPath!;
-        runnerProcess.StartInfo.Arguments = $"--runner {typeof(THandler).Name} --pipe {pipeName}";
+        runnerProcess.StartInfo.Arguments = $"--runner {typeof(THandler).FullName} --command-pipe {commandPipeName} --response-pipe {responsePipeName}";
         runnerProcess.StartInfo.UseShellExecute = false;
         runnerProcess.StartInfo.RedirectStandardOutput = true;
         runnerProcess.StartInfo.RedirectStandardError = true;
         runnerProcess.Start();
 
-        // Start pipe server
-        pipeServer = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.None, 4 * 1024 * 1024, 4 * 1024 * 1024);
-        Console.WriteLine("[Main] Waiting for pipe connection");
-        await pipeServer.WaitForConnectionAsync();
+        // Start reading stdout/stderr early so logs are visible
+        runnerProcess.EnableRaisingEvents = true;
+        runnerProcess.OutputDataReceived += (s, e) => { Console.WriteLine($"[Runner stdout] {e.Data}"); };
+        runnerProcess.ErrorDataReceived += (s, e) => { Console.WriteLine($"[Runner stderr] {e.Data}"); };
+        runnerProcess.BeginOutputReadLine();
+        runnerProcess.BeginErrorReadLine();
+        exitedHandler = new EventHandler((s, e) =>
+        {
+            try { Console.WriteLine($"[Runner] Process exited with code {runnerProcess.ExitCode}"); } catch { Console.WriteLine("[Runner] Process exited"); }
+        });
+        runnerProcess.Exited += exitedHandler;
+
+        // Start command pipe server (main writes, runner reads) 
+        commandPipe = new NamedPipeServerStream(commandPipeName, PipeDirection.Out, 1, PipeTransmissionMode.Byte, PipeOptions.None, 4 * 1024 * 1024, 4 * 1024 * 1024);
+        Console.WriteLine("[Main] Waiting for command pipe connection");
+        await commandPipe.WaitForConnectionAsync();
+
+        // Start response pipe server (main reads, runner writes)
+        responsePipe = new NamedPipeServerStream(responsePipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.None, 4 * 1024 * 1024, 4 * 1024 * 1024);
+        Console.WriteLine("[Main] Waiting for response pipe connection");
+        await responsePipe.WaitForConnectionAsync();
 
         // Check if process exited
         if (runnerProcess.HasExited)
@@ -56,24 +65,35 @@ public class RunnerManager<THandler> where THandler : IRunnerHandler
         }
 
         // Create proxy
-        runnerProxy = new RunnerProxy(pipeServer, pendingRequests);
+        writer = new BinaryWriter(commandPipe, System.Text.Encoding.UTF8, leaveOpen: true);
         Console.WriteLine("[Main] Runner started successfully");
+
+        // Start listening for messages
+        _ = Task.Run(ListenForMessages);
     }
 
-    public async Task StopRunner()
+    public async Task Stop()
     {
-        if (runnerProxy != null)
+        if (writer != null)
         {
-            await runnerProxy.Stop();
-            runnerProxy = null;
+            await Call(x => x.Stop());
+            writer = null;
         }
-        if (pipeServer != null)
+        if (commandPipe != null)
         {
-            pipeServer.Close();
-            pipeServer = null;
+            commandPipe.Close();
+            commandPipe = null;
+        }
+        if (responsePipe != null)
+        {
+            responsePipe.Close();
+            responsePipe = null;
         }
         if (runnerProcess != null)
         {
+            if (outputHandler != null) { runnerProcess.OutputDataReceived -= outputHandler; outputHandler = null; }
+            if (errorHandler != null) { runnerProcess.ErrorDataReceived -= errorHandler; errorHandler = null; }
+            if (exitedHandler != null) { runnerProcess.Exited -= exitedHandler; exitedHandler = null; }
             if (!runnerProcess.HasExited)
             {
                 runnerProcess.Kill();
@@ -83,17 +103,70 @@ public class RunnerManager<THandler> where THandler : IRunnerHandler
         }
     }
 
-    public RunnerProxy? Proxy => runnerProxy;
-
-    public void ListenForMessages(Action<string, JsonElement> onEvent)
+    public async Task Call(Expression<Action<THandler>> expr)
     {
-        if (pipeServer == null) return;
-        using var reader = new BinaryReader(pipeServer, System.Text.Encoding.UTF8, leaveOpen: true);
+        var call = (MethodCallExpression)expr.Body;
+        var methodName = call.Method.Name;
+        var args = call.Arguments.Select(a => Expression.Lambda(a).Compile().DynamicInvoke()).ToArray();
+        await SendCall(methodName, args);
+    }
+
+    public async Task Call(Expression<Func<THandler, Task>> expr)
+    {
+        var call = (MethodCallExpression)expr.Body;
+        var methodName = call.Method.Name;
+        var args = call.Arguments.Select(a => Expression.Lambda(a).Compile().DynamicInvoke()).ToArray();
+        await SendCall(methodName, args);
+    }
+
+
+    public async Task<T> Call<T>(Expression<Func<THandler, T>> expr)
+    {
+        var call = (MethodCallExpression)expr.Body;
+        var methodName = call.Method.Name;
+        var args = call.Arguments.Select(a => Expression.Lambda(a).Compile().DynamicInvoke()).ToArray();
+        var result = await SendCall(methodName, args);
+        return (T)result!;
+    }
+
+    public void On<T>(Expression<Func<THandler, Action<T>>> eventExpr, Action<T> handler)
+    {
+        var member = (MemberExpression)eventExpr.Body;
+        var eventName = member.Member.Name;
+        eventHandlers[eventName] = (handler, typeof(T));
+    }
+
+    private async Task<object?> SendCall(string method, object?[] args)
+    {
+        int id = Interlocked.Increment(ref nextId);
+        var tcs = new TaskCompletionSource<object?>();
+        pendingRequests[id] = tcs;
+        var argsBytes = MessagePackSerializer.Serialize(args);
+        lock (writePipeLock)
+        {
+            writer!.Write((byte)MessageType.Call);
+            writer.Write(id);
+            writer.Write(method);
+            writer.Write(argsBytes.Length);
+            writer.Write(argsBytes);
+            writer.Flush();
+            commandPipe!.Flush();
+        }
+        Console.WriteLine($"[Main] Sending {method} with id {id}");
+        var result = await tcs.Task;
+        Console.WriteLine($"[Main] {method} completed");
+        return result;
+    }
+
+    public void ListenForMessages()
+    {
+        if (responsePipe == null) return;
+        using var reader = new BinaryReader(responsePipe, System.Text.Encoding.UTF8, leaveOpen: true);
         while (true)
         {
             try
             {
-                HandleMessage(onEvent, reader);
+                HandleMessage(reader);
             }
             catch (Exception ex)
             {
@@ -103,32 +176,34 @@ public class RunnerManager<THandler> where THandler : IRunnerHandler
         }
     }
 
-    private void HandleMessage(Action<string, JsonElement> onEvent, BinaryReader reader)
+    private void HandleMessage(BinaryReader reader)
     {
-        lock (pipeLock)
+        var type = (MessageType)reader.ReadByte();
+        if (type == MessageType.Event)
         {
-            var type = reader.ReadString();
-            if (type == "event")
+            var eventName = reader.ReadString();
+            var length = reader.ReadInt32();
+            var bytes = reader.ReadBytes(length);
+            if (eventHandlers.TryGetValue(eventName, out var tuple))
             {
-                var eventName = reader.ReadString();
-                var dataJson = reader.ReadString();
-                var data = JsonDocument.Parse(dataJson).RootElement;
-                onEvent(eventName, data);
+                var obj = MessagePackSerializer.Deserialize(tuple.argType, bytes);
+                tuple.handler.DynamicInvoke(obj);
             }
-            else if (type == "log")
-            {
-                var level = reader.ReadString();
-                var msg = reader.ReadString();
-                Console.WriteLine($"[{level}] {msg}");
-            }
-            else if (type == "response")
-            {
-                var id = reader.ReadInt32();
-                var status = reader.ReadString();
-                var resultJson = reader.ReadString();
-                var result = !string.IsNullOrEmpty(resultJson) ? JsonSerializer.Deserialize<object>(resultJson) : null;
-                HandleResponse(id, status, result);
-            }
+        }
+        else if (type == MessageType.Log)
+        {
+            var level = reader.ReadString();
+            var msg = reader.ReadString();
+            Console.WriteLine($"[{level}] {msg}");
+        }
+        else if (type == MessageType.Response)
+        {
+            var id = reader.ReadInt32();
+            var status = reader.ReadString();
+            var length = reader.ReadInt32();
+            var bytes = reader.ReadBytes(length);
+            var result = length > 0 ? MessagePackSerializer.Deserialize<object>(bytes) : null;
+            HandleResponse(id, status, result);
         }
     }
 

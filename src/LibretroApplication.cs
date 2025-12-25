@@ -1,7 +1,4 @@
 using System.IO.Compression;
-using System.Diagnostics;
-using System.IO.Pipes;
-using System.Text.Json;
 using watari_libretro.Types;
 using Watari;
 
@@ -13,7 +10,6 @@ public class LibretroApplication(WatariContext context)
     private readonly Dictionary<uint, bool> buttonStates = [];
     private RunnerManager<LibretroHandler>? runnerManager;
     public event Action<FrameData> OnFrameReceived = delegate { };
-    public event Action<AudioData> OnAudioReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
     public event Action<string> OnDownloadComplete = delegate { };
 
@@ -66,61 +62,49 @@ public class LibretroApplication(WatariContext context)
             throw new Exception("Download the core first");
 
         Console.WriteLine($"[Main] Loading core: {dylibPath}");
-        await Stop();
+        if (runnerManager != null)
+        {
+            await runnerManager.Stop();
+            runnerManager = null;
+        }
 
         runnerManager = new RunnerManager<LibretroHandler>();
         await runnerManager.StartRunner();
 
-        // Start listening for messages
-        _ = Task.Run(() => runnerManager.ListenForMessages((type, data) =>
-        {
-            if (type == "OnFrame")
-            {
-                var frameData = data.Deserialize<FrameData>();
-                OnFrameReceived(frameData!);
-            }
-            else if (type == "OnAudio")
-            {
-                var audioData = data.Deserialize<AudioData>();
-                OnAudioReceived(audioData!);
-                // Decode Base64 samples to short[]
-                var bytes = Convert.FromBase64String(audioData!.Samples);
-                var samples = new short[bytes.Length / 2];
-                Buffer.BlockCopy(bytes, 0, samples, 0, bytes.Length);
-                // Stream audio to application
-                context.Application.PlayAudio(samples);
-            }
-        }));
+        // Register event handlers
+        runnerManager.On(x => x.OnFrame, OnFrameReceived);
+        runnerManager.On(x => x.OnAudio, OnAudioReceived);
 
-        await runnerManager.Proxy!.LoadCore(dylibPath);
+        await runnerManager.Call(x => x.LoadCore(dylibPath));
+    }
+
+    private void OnAudioReceived(AudioData audioData)
+    {
+        // Samples is now byte[]
+        var bytes = audioData!.Samples;
+        var samples = new short[bytes.Length / 2];
+        Buffer.BlockCopy(bytes, 0, samples, 0, bytes.Length);
+        // Stream audio to application
+        context.Application.PlayAudio(samples);
     }
 
     public async Task LoadGame(string gamePath)
     {
-        if (runnerManager?.Proxy == null) throw new Exception("Load core first");
-        await runnerManager.Proxy.LoadGame(gamePath);
+        if (runnerManager == null) throw new Exception("Load core first");
+        await runnerManager.Call(x => x.LoadGame(gamePath));
 
         // Initialize audio with correct sample rate
-        var sampleRate = await runnerManager.Proxy.GetSampleRate();
+        var sampleRate = await runnerManager.Call(x => x.GetSampleRate());
         context.Application.InitAudio(sampleRate);
     }
 
     public async Task Run()
     {
-        if (runnerManager?.Proxy == null)
+        if (runnerManager == null)
         {
             throw new Exception("Load core and game first");
         }
-        await runnerManager.Proxy.Run();
-    }
-
-    public async Task Stop()
-    {
-        if (runnerManager != null)
-        {
-            await runnerManager.StopRunner();
-            runnerManager = null;
-        }
+        await runnerManager.Call(x => x.Run());
     }
 
     public IEnumerable<string> ListDownloadedCores()
@@ -137,9 +121,9 @@ public class LibretroApplication(WatariContext context)
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = true;
-            if (runnerManager?.Proxy != null)
+            if (runnerManager != null)
             {
-                await runnerManager.Proxy.SetInput(key, true);
+                await runnerManager.Call(x => x.SetInput(key, true));
             }
         }
         catch
@@ -155,9 +139,9 @@ public class LibretroApplication(WatariContext context)
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = false;
-            if (runnerManager?.Proxy != null)
+            if (runnerManager != null)
             {
-                await runnerManager.Proxy.SetInput(key, false);
+                await runnerManager.Call(x => x.SetInput(key, false));
             }
         }
         catch
