@@ -1,35 +1,52 @@
 using System.IO.Pipes;
-using System.Text.Json;
+using MessagePack;
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 
 namespace watari_libretro;
 
-public class RunnerProcess<THandler> where THandler : IRunnerHandler
+public class RunnerProcess
 {
-    public static RunnerProcess<THandler>? Get(string[] args)
+    public static RunnerProcess? Get(string[] args)
     {
         if (args.Length > 1 && args[0] == "--runner")
         {
-            return new RunnerProcess<THandler>(args);
+            return new RunnerProcess(args);
         }
         return null;
     }
 
-    private readonly string pipeName;
+    private readonly string commandPipeName;
+    private readonly string responsePipeName;
+    private readonly string handlerTypeName;
     private IRunnerHandler? handler;
-    private NamedPipeClientStream? pipeClient;
+    private NamedPipeClientStream? commandPipe;
+    private NamedPipeClientStream? responsePipe;
     private readonly object pipeLock = new();
     private BinaryWriter? writer;
 
     private RunnerProcess(string[] args)
     {
-        // Parse args: --runner <type> --pipe <name>
-        pipeName = "";
-        for (int i = 2; i < args.Length; i++)
+        // Parse args: --runner <type> --command-pipe <name> --response-pipe <name>
+        handlerTypeName = "";
+        commandPipeName = "";
+        responsePipeName = "";
+        for (int i = 0; i < args.Length; i++)
         {
-            if (args[i] == "--pipe" && i + 1 < args.Length)
+            if (args[i] == "--runner" && i + 1 < args.Length)
             {
-                pipeName = args[i + 1];
+                handlerTypeName = args[i + 1];
+                i++;
+            }
+            else if (args[i] == "--command-pipe" && i + 1 < args.Length)
+            {
+                commandPipeName = args[i + 1];
+                i++;
+            }
+            else if (args[i] == "--response-pipe" && i + 1 < args.Length)
+            {
+                responsePipeName = args[i + 1];
+                i++;
             }
         }
     }
@@ -39,22 +56,20 @@ public class RunnerProcess<THandler> where THandler : IRunnerHandler
         try
         {
             Log("Starting runner");
-            pipeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut);
-            Log("Connecting to pipe");
-            pipeClient.Connect();
+            commandPipe = new NamedPipeClientStream(".", commandPipeName, PipeDirection.In);
+            Log("Connecting to command pipe");
+            commandPipe.Connect();
 
-            writer = new BinaryWriter(pipeClient, System.Text.Encoding.UTF8, leaveOpen: true);
+            responsePipe = new NamedPipeClientStream(".", responsePipeName, PipeDirection.Out);
+            Log("Connecting to response pipe");
+            responsePipe.Connect();
 
-            // Set up logging
-            var ipcLogger = new IPCLogger((level, msg) => SendLog(pipeClient, level, msg));
-            handler = (IRunnerHandler)Activator.CreateInstance(typeof(THandler), ipcLogger)!;
+            writer = new BinaryWriter(responsePipe, System.Text.Encoding.UTF8, leaveOpen: true);
 
-            // Set up event handlers
-            handler.OnFrame += data => SendEvent(pipeClient, "OnFrame", data);
-            handler.OnAudio += data => SendEvent(pipeClient, "OnAudio", data);
+            InitializeHandler();
 
             // Start listening for messages
-            var listenTask = Task.Run(() => ListenForMessages(pipeClient));
+            var listenTask = Task.Run(() => ListenForMessages(commandPipe));
 
             Log("Runner initialized");
 
@@ -90,60 +105,95 @@ public class RunnerProcess<THandler> where THandler : IRunnerHandler
 
     private async Task ProcessMessage(BinaryReader reader)
     {
-        var type = reader.ReadString();
-        if (type == "call")
+        var type = (MessageType)reader.ReadByte();
+        if (type == MessageType.Call)
         {
-            var id = reader.ReadInt32();
-            var method = reader.ReadString();
-            var dataJson = reader.ReadString();
-            var data = JsonDocument.Parse(dataJson).RootElement;
-            Log($"Handling {method} with id {id}");
-            try
-            {
-                var result = await handler!.HandleMessage(method, data);
-                SendBinaryMessage(pipeClient!, "response", id, "success", result);
-            }
-            catch (Exception ex)
-            {
-                LogError($"Error handling message {method}", ex);
-                SendBinaryMessage(pipeClient!, "response", id, "error", ex.Message);
-            }
+            await HandleCall(reader);
         }
     }
 
-    private void SendBinaryMessage(NamedPipeClientStream pipe, string type, int id, string status, object? result = null)
+    private async Task HandleCall(BinaryReader reader)
     {
+        var id = reader.ReadInt32();
+        var method = reader.ReadString();
+        Console.WriteLine($"[Runner] Received call {method} with id {id}");
+        Log($"Handling {method} with id {id}");
+        var length = reader.ReadInt32();
+        var bytes = reader.ReadBytes(length);
+        var args = MessagePackSerializer.Deserialize<object[]>(bytes);
+        try
+        {
+            var methodInfo = handler!.GetType().GetMethod(method);
+            if (methodInfo == null)
+            {
+                throw new Exception($"Method {method} not found");
+            }
+            var invokeResult = methodInfo.Invoke(handler, args);
+            object? result = null;
+            if (invokeResult is Task task)
+            {
+                await task;
+                if (methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.GetGenericTypeDefinition() == typeof(Task<>))
+                {
+                    var resultProperty = methodInfo.ReturnType.GetProperty("Result");
+                    result = resultProperty?.GetValue(task);
+                }
+            }
+            else
+            {
+                result = invokeResult;
+            }
+            Console.WriteLine($"[Runner] {method} with id {id} completed: {result}");
+            SendResponse(id, "success", result);
+            Console.WriteLine($"[Runner] Sent response for {method} with id {id}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"Error handling message {method}", ex);
+        }
+    }
+
+    private void SendResponse(int id, string status, object? result)
+    {
+        var resultBytes = result != null ? MessagePackSerializer.Serialize(result) : Array.Empty<byte>();
         lock (pipeLock)
         {
-            writer!.Write(type);
+            writer!.Write((byte)MessageType.Response);
             writer.Write(id);
             writer.Write(status);
-            var resultJson = result != null ? JsonSerializer.Serialize(result) : "";
-            writer.Write(resultJson);
-            pipe.Flush();
+            writer.Write(resultBytes.Length);
+            if (resultBytes.Length > 0)
+            {
+                writer.Write(resultBytes);
+            }
+            writer.Flush();
+            responsePipe!.Flush();
         }
     }
 
-    private void SendEvent(NamedPipeClientStream pipe, string eventName, object data)
+    private void SendEvent(string eventName, object? data)
     {
+        var dataBytes = MessagePackSerializer.Serialize(data);
         lock (pipeLock)
         {
-            writer!.Write("event");
+            writer!.Write((byte)MessageType.Event);
             writer.Write(eventName);
-            var dataJson = JsonSerializer.Serialize(data);
-            writer.Write(dataJson);
-            pipe.Flush();
+            writer.Write(dataBytes.Length);
+            writer.Write(dataBytes);
+            writer.Flush();
+            responsePipe!.Flush();
         }
     }
 
-    private void SendLog(NamedPipeClientStream pipe, LogLevel level, string message)
+    private void SendLog(LogLevel level, string message)
     {
         lock (pipeLock)
         {
-            writer!.Write("log");
+            writer!.Write((byte)MessageType.Log);
             writer.Write(level.ToString());
             writer.Write(message);
-            pipe.Flush();
+            writer.Flush();
+            responsePipe!.Flush();
         }
     }
 
@@ -155,5 +205,42 @@ public class RunnerProcess<THandler> where THandler : IRunnerHandler
     private void LogError(string message, Exception ex)
     {
         Console.Error.WriteLine($"[Runner Error] {message}: {ex}");
+    }
+
+    private Action<T> CreateAction<T>(string eventName)
+    {
+        return data => SendEvent(eventName, data);
+    }
+
+    private void InitializeHandler()
+    {
+        // Create handler using reflection
+        Type? handlerType = Assembly.GetExecutingAssembly().GetType(handlerTypeName);
+        Console.WriteLine($"Handler type name: {handlerTypeName}, type: {handlerType}");
+        if (handlerType != null)
+        {
+            var ipcLogger = new IPCLogger((level, msg) => SendLog(level, msg));
+            handler = (IRunnerHandler)Activator.CreateInstance(handlerType, ipcLogger)!;
+            Console.WriteLine("Handler created");
+            if (handler != null)
+            {
+                // Set up action fields
+                var actionFields = handlerType.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(f => f.FieldType.IsGenericType && f.FieldType.GetGenericTypeDefinition() == typeof(Action<>));
+                foreach (var field in actionFields)
+                {
+                    var actionType = field.FieldType;
+                    var argType = actionType.GetGenericArguments()[0];
+                    var method = typeof(RunnerProcess).GetMethod(nameof(CreateAction), BindingFlags.NonPublic | BindingFlags.Instance);
+                    var genericMethod = method!.MakeGenericMethod(argType);
+                    var action = genericMethod.Invoke(this, [field.Name]);
+                    field.SetValue(handler, action);
+                }
+            }
+        }
+        else
+        {
+            Console.WriteLine("Handler type not found");
+        }
     }
 }

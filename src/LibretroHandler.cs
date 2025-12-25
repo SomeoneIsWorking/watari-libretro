@@ -13,8 +13,8 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
     private RetroRunner? runner;
     private readonly Dictionary<uint, bool> buttonStates = [];
     private double sampleRate = 44100;
-    public event Action<FrameData>? OnFrame;
-    public event Action<AudioData>? OnAudio;
+    public required Action<FrameData> OnFrame;
+    public required Action<AudioData> OnAudio;
 
     public Task LoadCore(string corePath)
     {
@@ -26,15 +26,14 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
                 if (data != IntPtr.Zero)
                 {
                     var pixelBytes = PixelConverter.ConvertFrame(data, w, h, pitch, retro.PixelFormat);
-                    var base64 = Convert.ToBase64String(pixelBytes);
                     var frameData = new FrameData
                     {
-                        Pixels = base64,
+                        Pixels = pixelBytes,
                         Width = (int)w,
                         Height = (int)h,
                         PixelFormat = "RGBA8888"
                     };
-                    OnFrame?.Invoke(frameData);
+                    OnFrame(frameData);
                 }
             }
             catch (Exception ex)
@@ -49,10 +48,10 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
             {
                 var audioData = new AudioData
                 {
-                    Samples = Convert.ToBase64String(BitConverter.GetBytes(left).Concat(BitConverter.GetBytes(right)).ToArray()),
+                    Samples = [.. BitConverter.GetBytes(left), .. BitConverter.GetBytes(right)],
                     SampleRate = 44100
                 };
-                OnAudio?.Invoke(audioData);
+                OnAudio(audioData);
             }
             catch (Exception ex)
             {
@@ -69,10 +68,10 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
                 Marshal.Copy(data, samples, 0, sampleCount);
                 var audioData = new AudioData
                 {
-                    Samples = Convert.ToBase64String(MemoryMarshal.AsBytes<short>(samples)),
+                    Samples = MemoryMarshal.AsBytes<short>(samples).ToArray(),
                     SampleRate = (int)sampleRate
                 };
-                OnAudio?.Invoke(audioData);
+                OnAudio(audioData);
                 return frames;
             }
             catch (Exception ex)
@@ -100,7 +99,7 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
         };
 
         retro.LoadCore(corePath);
-        LogMessage("Info", "Core loaded");
+        logger.LogInformation("Core loaded");
         return Task.CompletedTask;
     }
 
@@ -122,8 +121,8 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
             runner.LoadGame(gameInfo);
             var avInfo = retro!.GetSystemAvInfo();
             sampleRate = avInfo.timing.sample_rate;
-            LogMessage("Info", $"Sample rate: {sampleRate}");
-            LogMessage("Info", "Game loaded");
+            logger.LogInformation($"Sample rate: {sampleRate}");
+            logger.LogInformation("Game loaded");
         }
         return Task.CompletedTask;
     }
@@ -133,7 +132,7 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
         if (runner != null)
         {
             runner.Start();
-            LogMessage("Info", "Runner started");
+            logger.LogInformation("Runner started");
         }
         return Task.CompletedTask;
     }
@@ -143,7 +142,7 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
         if (runner != null)
         {
             await runner.Stop();
-            LogMessage("Info", "Runner stopped");
+            logger.LogInformation("Runner stopped");
         }
     }
 
@@ -153,7 +152,7 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = down;
-            LogMessage("Info", $"Input set: {key} = {down}");
+            logger.LogInformation($"Input set: {key} = {down}");
         }
         catch (Exception ex)
         {
@@ -162,47 +161,6 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
         return Task.CompletedTask;
     }
 
-    private void LogMessage(string level, string message)
-    {
-        if (Enum.TryParse<LogLevel>(level, true, out var logLevel))
-        {
-            logger.Log(logLevel, message);
-        }
-        else
-        {
-            logger.Log(LogLevel.Information, $"{level}: {message}");
-        }
-    }
-
     public double GetSampleRate() => sampleRate;
 
-    public async Task<object?> HandleMessage(string type, JsonElement data)
-    {
-        switch (type)
-        {
-            case "LoadCore":
-                var corePath = data.GetProperty("corePath").GetString()!;
-                await LoadCore(corePath);
-                return null;
-            case "LoadGame":
-                var gamePath = data.GetProperty("gamePath").GetString()!;
-                await LoadGame(gamePath);
-                return null;
-            case "Run":
-                await Run();
-                return null;
-            case "Stop":
-                await Stop();
-                return null;
-            case "SetInput":
-                var key = data.GetProperty("key").GetString()!;
-                var down = data.GetProperty("down").GetBoolean();
-                await SetInput(key, down);
-                return null;
-            case "GetSampleRate":
-                return sampleRate;
-            default:
-                throw new NotImplementedException($"Unknown message type: {type}");
-        }
-    }
 }
