@@ -83,6 +83,12 @@ public class LibretroApplication(WatariContext context)
             {
                 var audioData = data.Deserialize<AudioData>();
                 OnAudioReceived(audioData!);
+                // Decode Base64 samples to short[]
+                var bytes = Convert.FromBase64String(audioData!.Samples);
+                var samples = new short[bytes.Length / 2];
+                Buffer.BlockCopy(bytes, 0, samples, 0, bytes.Length);
+                // Stream audio to application
+                context.Application.PlayAudio(samples);
             }
         }));
 
@@ -93,6 +99,10 @@ public class LibretroApplication(WatariContext context)
     {
         if (runnerManager?.Proxy == null) throw new Exception("Load core first");
         await runnerManager.Proxy.LoadGame(gamePath);
+
+        // Initialize audio with correct sample rate
+        var sampleRate = await runnerManager.Proxy.GetSampleRate();
+        context.Application.InitAudio(sampleRate);
     }
 
     public async Task Run()
