@@ -14,7 +14,7 @@ const { addToast } = useToast();
 const store = useCoresStore();
 const gameStore = useGameStore();
 
-const frame = ref<string>("");
+const frame = ref<{ Pixels: string; Width: number; Height: number; PixelFormat: string } | null>(null);
 
 onMounted(async () => {
   try {
@@ -24,7 +24,7 @@ onMounted(async () => {
   }
 
   LibretroApplication.OnFrameReceived((data) => {
-    frame.value = data.Image;
+    frame.value = data;
   });
 
   LibretroApplication.OnDownloadProgress((data) => {

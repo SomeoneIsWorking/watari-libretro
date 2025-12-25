@@ -1,7 +1,5 @@
 using System.Diagnostics;
-using Libretro.NET;
-
-namespace watari_libretro;
+using watari_libretro;
 
 class RetroRunner
 {
@@ -41,8 +39,8 @@ class RetroRunner
         return tsc.Task;
     }
 
-    internal void LoadGame(string gamePath)
+    internal void LoadGame(retro_game_info gameInfo)
     {
-        retro.LoadGame(gamePath);
+        retro.LoadGame(gameInfo);
     }
 }
