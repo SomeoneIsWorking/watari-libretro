@@ -10,8 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Watari\**" />
-    <ProjectReference Include="Watari\src\Watari\Watari.csproj" />
+    <ProjectReference Include="..\Watari\src\Watari\Watari.csproj" />
   </ItemGroup>
 
   <ItemGroup>
