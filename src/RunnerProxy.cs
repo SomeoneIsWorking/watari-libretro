@@ -36,6 +36,16 @@ public class RunnerProxy(NamedPipeServerStream pipe, Dictionary<int, TaskComplet
         await SendMessageAndWait("SetInput", new { key, down });
     }
 
+    public async Task<double> GetSampleRate()
+    {
+        var result = await SendMessageAndWait("GetSampleRate", null);
+        if (result is JsonElement je)
+        {
+            return je.GetDouble();
+        }
+        return (double)result!;
+    }
+
     private async Task<object?> SendMessageAndWait(string method, object? data)
     {
         int id = Interlocked.Increment(ref nextId);

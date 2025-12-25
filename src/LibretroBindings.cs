@@ -903,6 +903,7 @@ public unsafe class LibretroCore
     public retro_environment_callback? OnEnvironment;
 
     public retro_pixel_format PixelFormat { get; private set; }
+    public double SampleRate { get; private set; }
 
     public LibretroCore()
     {
@@ -1093,6 +1094,15 @@ public unsafe class LibretroCore
             if (data != IntPtr.Zero && currentInstance != null)
             {
                 currentInstance.PixelFormat = (retro_pixel_format)Marshal.ReadInt32(data);
+            }
+            return true;
+        }
+        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO)
+        {
+            if (data != IntPtr.Zero && currentInstance != null)
+            {
+                retro_system_av_info avInfo = Marshal.PtrToStructure<retro_system_av_info>(data);
+                currentInstance.SampleRate = avInfo.timing.sample_rate;
             }
             return true;
         }
