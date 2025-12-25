@@ -12,6 +12,7 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
     private RetroWrapper? retro;
     private RetroRunner? runner;
     private readonly Dictionary<uint, bool> buttonStates = [];
+    private double sampleRate = 44100;
     public event Action<FrameData>? OnFrame;
     public event Action<AudioData>? OnAudio;
 
@@ -59,6 +60,28 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
             }
         };
 
+        retro.OnSampleBatch = (data, frames) =>
+        {
+            try
+            {
+                var sampleCount = (int)frames * 2; // stereo
+                var samples = new short[sampleCount];
+                Marshal.Copy(data, samples, 0, sampleCount);
+                var audioData = new AudioData
+                {
+                    Samples = Convert.ToBase64String(MemoryMarshal.AsBytes<short>(samples)),
+                    SampleRate = (int)sampleRate
+                };
+                OnAudio?.Invoke(audioData);
+                return frames;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error in OnSampleBatch: {ex}");
+                return 0;
+            }
+        };
+
         retro.OnCheckInput = (port, device, index, inputId) =>
         {
             try
@@ -97,6 +120,9 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
                 meta = IntPtr.Zero
             };
             runner.LoadGame(gameInfo);
+            var avInfo = retro!.GetSystemAvInfo();
+            sampleRate = avInfo.timing.sample_rate;
+            LogMessage("Info", $"Sample rate: {sampleRate}");
             LogMessage("Info", "Game loaded");
         }
         return Task.CompletedTask;
@@ -148,6 +174,8 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
         }
     }
 
+    public double GetSampleRate() => sampleRate;
+
     public async Task<object?> HandleMessage(string type, JsonElement data)
     {
         switch (type)
@@ -171,6 +199,8 @@ public class LibretroHandler(ILogger logger) : IRunnerHandler
                 var down = data.GetProperty("down").GetBoolean();
                 await SetInput(key, down);
                 return null;
+            case "GetSampleRate":
+                return sampleRate;
             default:
                 throw new NotImplementedException($"Unknown message type: {type}");
         }

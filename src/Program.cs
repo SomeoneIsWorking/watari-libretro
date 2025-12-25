@@ -1,6 +1,12 @@
 ﻿using Watari;
 using watari_libretro;
 
+if (args.Length > 0 && args[0] == "audiotest")
+{
+    AudioTest.Main();
+    return 0;
+}
+
 if (args.Length > 1 && args[0] == "--runner")
 {
     string handlerType = args[1];

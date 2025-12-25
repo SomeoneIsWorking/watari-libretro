@@ -4,8 +4,6 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
@@ -19,10 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\watari-libretro.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="LibretroCoreTests.cs" />
   </ItemGroup>
 
 </Project>
