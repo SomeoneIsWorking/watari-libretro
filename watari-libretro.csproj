@@ -14,10 +14,4 @@
     <ProjectReference Include="Watari\src\Watari\Watari.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Libretro.NET" Version="0.1.0" />
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="SkiaSharp" Version="3.119.1" />
-  </ItemGroup>
-
 </Project>
