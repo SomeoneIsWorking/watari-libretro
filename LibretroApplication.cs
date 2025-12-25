@@ -1,5 +1,7 @@
 using System.IO.Compression;
-using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.IO.Pipes;
+using System.Text.Json;
 using watari_libretro.Types;
 using Watari;
 
@@ -7,10 +9,11 @@ namespace watari_libretro;
 
 public class LibretroApplication(WatariContext context)
 {
-    private RetroRunner? runner;
     private readonly string coresDir = context.PathCombine("cores");
     private readonly Dictionary<uint, bool> buttonStates = [];
+    private RunnerManager<LibretroHandler>? runnerManager;
     public event Action<FrameData> OnFrameReceived = delegate { };
+    public event Action<AudioData> OnAudioReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
     public event Action<string> OnDownloadComplete = delegate { };
 
@@ -62,62 +65,51 @@ public class LibretroApplication(WatariContext context)
         if (!File.Exists(dylibPath))
             throw new Exception("Download the core first");
 
+        Console.WriteLine($"[Main] Loading core: {dylibPath}");
         await Stop();
 
-        var retro = new RetroWrapper();
-        retro.OnFrame = (data, w, h, pitch) =>
+        runnerManager = new RunnerManager<LibretroHandler>();
+        await runnerManager.StartRunner();
+
+        // Start listening for messages
+        _ = Task.Run(() => runnerManager.ListenForMessages((type, data) =>
         {
-            var pixelBytes = PixelConverter.ConvertFrame(data, w, h, pitch, retro.PixelFormat);
-            var base64 = Convert.ToBase64String(pixelBytes);
-            OnFrameReceived(new FrameData
+            if (type == "OnFrame")
             {
-                Pixels = base64,
-                Width = (int)w,
-                Height = (int)h,
-                PixelFormat = "RGBA8888"
-            });
-        };
-        retro.OnSample = (left, right) => { /* TODO: audio */ };
-        retro.OnCheckInput = (port, device, index, id) =>
-        {
-            if (device == (uint)retro_device_type.RETRO_DEVICE_JOYPAD && port == 0 && index == 0)
-            {
-                return buttonStates.TryGetValue(id, out var pressed) && pressed ? (short)1 : (short)0;
+                var frameData = data.Deserialize<FrameData>();
+                OnFrameReceived(frameData!);
             }
-            return 0;
-        };
-        retro.LoadCore(dylibPath);
-        runner = new RetroRunner(retro);
+            else if (type == "OnAudio")
+            {
+                var audioData = data.Deserialize<AudioData>();
+                OnAudioReceived(audioData!);
+            }
+        }));
+
+        await runnerManager.Proxy!.LoadCore(dylibPath);
     }
 
-    public void LoadGame(string gamePath)
+    public async Task LoadGame(string gamePath)
     {
-        if (runner == null) throw new Exception("Load core first");
-        var gameInfo = new retro_game_info
-        {
-            path = Marshal.StringToHGlobalAnsi(gamePath),
-            data = IntPtr.Zero,
-            size = 0,
-            meta = IntPtr.Zero
-        };
-        runner.LoadGame(gameInfo);
+        if (runnerManager?.Proxy == null) throw new Exception("Load core first");
+        await runnerManager.Proxy.LoadGame(gamePath);
     }
 
-    public void Run()
+    public async Task Run()
     {
-        if (runner == null)
+        if (runnerManager?.Proxy == null)
         {
             throw new Exception("Load core and game first");
         }
-        runner.Start();
+        await runnerManager.Proxy.Run();
     }
 
     public async Task Stop()
     {
-        if (runner != null)
+        if (runnerManager != null)
         {
-            await runner.Stop();
-            runner = null;
+            await runnerManager.StopRunner();
+            runnerManager = null;
         }
     }
 
@@ -128,13 +120,17 @@ public class LibretroApplication(WatariContext context)
         return files.Select(f => Path.GetFileNameWithoutExtension(f).Replace("_libretro", ""));
     }
 
-    public void SendKeyDown(string key)
+    public async Task SendKeyDown(string key)
     {
         Console.WriteLine($"Key Down: {key}");
         try
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = true;
+            if (runnerManager?.Proxy != null)
+            {
+                await runnerManager.Proxy.SetInput(key, true);
+            }
         }
         catch
         {
@@ -142,13 +138,17 @@ public class LibretroApplication(WatariContext context)
         }
     }
 
-    public void SendKeyUp(string key)
+    public async Task SendKeyUp(string key)
     {
         Console.WriteLine($"Key Up: {key}");
         try
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = false;
+            if (runnerManager?.Proxy != null)
+            {
+                await runnerManager.Proxy.SetInput(key, false);
+            }
         }
         catch
         {
