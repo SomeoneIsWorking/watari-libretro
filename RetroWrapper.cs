@@ -120,7 +120,7 @@ public class RetroWrapper : IDisposable
 
     private nuint AudioSampleBatch(IntPtr data, nuint frames)
     {
-        // TODO: handle batch
+        OnSampleBatch?.Invoke(data, frames);
         return frames;
     }
 
