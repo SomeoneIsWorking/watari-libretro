@@ -1,0 +1,3 @@
+[submodule "SeparateProcess"]
+	path = SeparateProcess
+	url = https://github.com/SomeoneIsWorking/SeparateProcess.git

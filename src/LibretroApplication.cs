@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using watari_libretro.Types;
 using Watari;
+using SeparateProcess;
 
 namespace watari_libretro;
 
@@ -8,7 +9,7 @@ public class LibretroApplication(WatariContext context)
 {
     private readonly string coresDir = context.PathCombine("cores");
     private readonly Dictionary<uint, bool> buttonStates = [];
-    private RunnerManager<LibretroHandler>? runnerManager;
+    private ProcessManager<LibretroHandler>? runnerManager;
     public event Action<FrameData> OnFrameReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
     public event Action<string> OnDownloadComplete = delegate { };
@@ -68,8 +69,8 @@ public class LibretroApplication(WatariContext context)
             runnerManager = null;
         }
 
-        runnerManager = new RunnerManager<LibretroHandler>();
-        await runnerManager.StartRunner();
+        runnerManager = new ProcessManager<LibretroHandler>();
+        await runnerManager.StartProcess();
 
         // Register event handlers
         runnerManager.On(x => x.OnFrame, OnFrameReceived);
