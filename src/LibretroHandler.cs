@@ -3,10 +3,11 @@ using watari_libretro.Types;
 using Watari;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using SeparateProcess;
 
 namespace watari_libretro;
 
-public class LibretroHandler(ILogger logger) : IRunnerHandler
+public class LibretroHandler(ILogger logger) : IProcessHandler
 {
     private readonly ILogger logger = logger;
     private RetroWrapper? retro;
