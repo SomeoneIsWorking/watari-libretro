@@ -1,7 +1,5 @@
-using System.IO;
 using System.Runtime.InteropServices;
 using Xunit;
-using watari_libretro;
 
 namespace watari_libretro.Tests;
 

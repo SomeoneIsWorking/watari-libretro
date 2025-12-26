@@ -1,8 +1,9 @@
 ﻿using Watari;
 using watari_libretro;
 using SeparateProcess;
+using Microsoft.Extensions.Logging;
 
-if (ProcessRunner.Get(args) is ProcessRunner runner)
+if (Spawner.GetRunner(args) is ProcessRunner runner)
 {
     runner.Run().Wait();
     return 0;
@@ -13,6 +14,7 @@ new FrameworkBuilder()
     .Expose<LibretroApplication>()
     .SetServerPort(8836)
     .SetFrontendPath("frontend")
+    .ConfigureLogging(builder => builder.AddConsole())
     .Build().Run(args);
 
 return 0;

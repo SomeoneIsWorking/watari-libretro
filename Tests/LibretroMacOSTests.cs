@@ -1,17 +1,15 @@
-using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading;
 using Xunit;
-using watari_libretro;
-using watari_libretro.Types;
 using Watari.Controls.Platform;
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace watari_libretro.Tests;
 
 [Collection("Libretro")]
 public class LibretroMacOSTests : IDisposable
 {
+    private readonly ILogger logger = NullLogger<LibretroMacOSTests>.Instance;
     private LibretroCore? _core;
     private bool _audioReceived = false;
     private Application? _app;
@@ -42,7 +40,7 @@ public class LibretroMacOSTests : IDisposable
         _core.Load(corePath);
         _core.SetEnvironment((cmd, data) => true);
         _core.Init();
-        Console.WriteLine($"SampleRate after Init: {_core.SampleRate}");
+        logger.LogDebug("SampleRate after Init: {SampleRate}", _core.SampleRate);
 
         // Set callbacks
         _core.SetVideoRefresh((data, width, height, pitch) => { });
@@ -66,12 +64,12 @@ public class LibretroMacOSTests : IDisposable
         };
         _core.LoadGame(gameInfo);
         var avInfo = _core.GetSystemAvInfo();
-        Console.WriteLine($"AV Info sample rate: {avInfo.timing.sample_rate}, fps: {avInfo.timing.fps}");
+        logger.LogDebug("AV Info sample rate: {SampleRate}, fps: {Fps}", avInfo.timing.sample_rate, avInfo.timing.fps);
 
         // Set sample rate
         double sampleRate = avInfo.timing.sample_rate;
         _app.InitAudio(sampleRate);
-        Console.WriteLine($"Using sample rate: {sampleRate}");
+        logger.LogDebug("Using sample rate: {SampleRate}", sampleRate);
 
         // Run for a few frames
         for (int i = 0; i < 120; i++) // 1 second at 60fps

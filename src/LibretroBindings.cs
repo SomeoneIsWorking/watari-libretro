@@ -315,6 +315,8 @@ public enum retro_log_level : uint
     RETRO_LOG_ERROR = 3
 }
 
+public delegate void retro_log_printf_callback(retro_log_level level, IntPtr fmt);
+
 public enum retro_hw_render_context_negotiation_interface_type : uint
 {
     RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN = 0,
@@ -901,6 +903,7 @@ public unsafe class LibretroCore
     public retro_input_poll_callback? OnInputPoll;
     public retro_input_state_callback? OnInputState;
     public retro_environment_callback? OnEnvironment;
+    public Action<retro_log_level, string>? OnLog;
 
     public retro_pixel_format PixelFormat { get; private set; }
     public double SampleRate { get; private set; }
@@ -1061,6 +1064,7 @@ public unsafe class LibretroCore
     private static readonly retro_input_poll_callback InputPollCallback = InputPoll;
     private static readonly retro_input_state_callback InputStateCallback = InputState;
     private static readonly retro_environment_callback EnvironmentCallback = Environment;
+    private static readonly retro_log_printf_callback LogCallback = Log;
 
     private static void VideoRefresh(IntPtr data, uint width, uint height, nuint pitch)
     {
@@ -1106,7 +1110,19 @@ public unsafe class LibretroCore
             }
             return true;
         }
+        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_GET_LOG_INTERFACE)
+        {
+            retro_log_callback logCallback = new() { log = Marshal.GetFunctionPointerForDelegate(LogCallback) };
+            Marshal.StructureToPtr(logCallback, data, false);
+            return true;
+        }
         // Handle other commands as needed
         return false;
+    }
+
+    private static void Log(retro_log_level level, IntPtr fmt)
+    {
+        string? message = Marshal.PtrToStringAnsi(fmt);
+        currentInstance?.OnLog?.Invoke(level, message ?? "");
     }
 }
