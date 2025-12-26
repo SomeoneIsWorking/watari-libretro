@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace watari_libretro;
 
 public static class PixelConverter

@@ -1,6 +1,3 @@
-using System.Runtime.InteropServices;
-using watari_libretro.Types;
-
 namespace watari_libretro;
 
 public class RetroWrapper : IDisposable
@@ -22,6 +19,7 @@ public class RetroWrapper : IDisposable
         core.SetAudioSampleBatch(OnSampleBatch ?? AudioSampleBatch);
         core.SetInputPoll(OnInputPoll ?? InputPoll);
         core.SetInputState(OnCheckInput ?? InputState);
+        core.OnLog = OnLog;
         core.Init();
     }
 
@@ -107,6 +105,7 @@ public class RetroWrapper : IDisposable
     public retro_input_poll_callback? OnInputPoll;
     public retro_input_state_callback? OnCheckInput;
     public retro_environment_callback? OnEnvironment;
+    public Action<retro_log_level, string>? OnLog;
 
     private void VideoRefresh(IntPtr data, uint width, uint height, nuint pitch)
     {
