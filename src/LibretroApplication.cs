@@ -2,14 +2,16 @@ using System.IO.Compression;
 using watari_libretro.Types;
 using Watari;
 using SeparateProcess;
+using Microsoft.Extensions.Logging;
 
 namespace watari_libretro;
 
-public class LibretroApplication(WatariContext context)
+public class LibretroApplication(WatariContext context, ILogger<LibretroApplication> logger)
 {
+    private readonly ILogger logger = logger;
     private readonly string coresDir = context.PathCombine("cores");
     private readonly Dictionary<uint, bool> buttonStates = [];
-    private ProcessManager<LibretroHandler>? runnerManager;
+    private LibretroService? runner;
     public event Action<FrameData> OnFrameReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
     public event Action<string> OnDownloadComplete = delegate { };
@@ -62,21 +64,20 @@ public class LibretroApplication(WatariContext context)
         if (!File.Exists(dylibPath))
             throw new Exception("Download the core first");
 
-        Console.WriteLine($"[Main] Loading core: {dylibPath}");
-        if (runnerManager != null)
+        logger.LogInformation("Loading core: {DylibPath}", dylibPath);
+        if (runner != null)
         {
-            await runnerManager.Stop();
-            runnerManager = null;
+            await runner.StopAsync();
+            runner = null;
         }
 
-        runnerManager = new ProcessManager<LibretroHandler>();
-        await runnerManager.StartProcess();
+        runner = await Spawner.Spawn<LibretroService>(logger);
 
         // Register event handlers
-        runnerManager.On(x => x.OnFrame, OnFrameReceived);
-        runnerManager.On(x => x.OnAudio, OnAudioReceived);
+        runner.OnFrame += OnFrameReceived;
+        runner.OnAudio += OnAudioReceived;
 
-        await runnerManager.Call(x => x.LoadCore(dylibPath));
+        await runner.LoadCore(dylibPath);
     }
 
     private void OnAudioReceived(AudioData audioData)
@@ -89,23 +90,24 @@ public class LibretroApplication(WatariContext context)
         context.Application.PlayAudio(samples);
     }
 
-    public async Task LoadGame(string gamePath)
+    public void LoadGame(string gamePath)
     {
-        if (runnerManager == null) throw new Exception("Load core first");
-        await runnerManager.Call(x => x.LoadGame(gamePath));
+        if (runner == null) throw new Exception("Load core first");
+        runner.LoadGame(gamePath);
 
         // Initialize audio with correct sample rate
-        var sampleRate = await runnerManager.Call(x => x.GetSampleRate());
+        var sampleRate = runner.GetSampleRate();
+        logger.LogInformation("Initializing audio with sample rate: {SampleRate}", sampleRate);
         context.Application.InitAudio(sampleRate);
     }
 
     public async Task Run()
     {
-        if (runnerManager == null)
+        if (runner == null)
         {
             throw new Exception("Load core and game first");
         }
-        await runnerManager.Call(x => x.Run());
+        await runner.StartAsync();
     }
 
     public IEnumerable<string> ListDownloadedCores()
@@ -117,14 +119,14 @@ public class LibretroApplication(WatariContext context)
 
     public async Task SendKeyDown(string key)
     {
-        Console.WriteLine($"Key Down: {key}");
+        logger.LogDebug("Key Down: {Key}", key);
         try
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = true;
-            if (runnerManager != null)
+            if (runner != null)
             {
-                await runnerManager.Call(x => x.SetInput(key, true));
+                await runner.SetInput(key, true);
             }
         }
         catch
@@ -135,14 +137,14 @@ public class LibretroApplication(WatariContext context)
 
     public async Task SendKeyUp(string key)
     {
-        Console.WriteLine($"Key Up: {key}");
+        logger.LogDebug("Key Up: {Key}", key);
         try
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = false;
-            if (runnerManager != null)
+            if (runner != null)
             {
-                await runnerManager.Call(x => x.SetInput(key, false));
+                await runner.SetInput(key, false);
             }
         }
         catch

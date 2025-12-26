@@ -1,25 +1,36 @@
 using System.Runtime.InteropServices;
 using watari_libretro.Types;
-using Watari;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using SeparateProcess;
 
 namespace watari_libretro;
 
-public class LibretroHandler(ILogger logger) : IProcessHandler
+#pragma warning disable CA1070 // Do not declare event fields as virtual
+public class LibretroService(ILogger<LibretroService> logger) : IBackgroundService
 {
-    private readonly ILogger logger = logger;
+    private readonly ILogger<LibretroService> logger = logger;
     private RetroWrapper? retro;
     private RetroRunner? runner;
     private readonly Dictionary<uint, bool> buttonStates = [];
     private double sampleRate = 44100;
-    public required Action<FrameData> OnFrame;
-    public required Action<AudioData> OnAudio;
+    public virtual event Action<FrameData> OnFrame = delegate { };
+    public virtual event Action<AudioData> OnAudio = delegate { };
 
-    public Task LoadCore(string corePath)
+    public virtual Task StartAsync()
+    {
+        if (runner == null)
+        {
+            throw new Exception("Load core and game first");
+        }
+        runner.Start();
+        logger.LogInformation("LibretroService started");
+        return Task.CompletedTask;
+    }
+
+    public virtual Task LoadCore(string corePath)
     {
         retro = new RetroWrapper();
+        retro.OnLog = LogMessage;
         retro.OnFrame = (data, w, h, pitch) =>
         {
             try
@@ -39,7 +50,7 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error in OnFrame: {ex}");
+                logger.LogError(ex, "Error in OnFrame");
             }
         };
 
@@ -56,7 +67,7 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error in OnSample: {ex}");
+                logger.LogError(ex, "Error in OnSample");
             }
         };
 
@@ -77,7 +88,7 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error in OnSampleBatch: {ex}");
+                logger.LogError(ex, "Error in OnSampleBatch");
                 return 0;
             }
         };
@@ -94,7 +105,7 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error in OnCheckInput: {ex}");
+                logger.LogError(ex, "Error in OnCheckInput");
                 return 0;
             }
         };
@@ -104,41 +115,29 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
         return Task.CompletedTask;
     }
 
-    public Task LoadGame(string gamePath)
+    public virtual void LoadGame(string gamePath)
     {
-        if (retro != null && runner == null)
+        if (retro == null)
         {
-            runner = new RetroRunner(retro);
+            throw new Exception("Load core first");
         }
-        if (runner != null)
+
+        runner ??= new RetroRunner(retro);
+        var gameInfo = new retro_game_info
         {
-            var gameInfo = new retro_game_info
-            {
-                path = Marshal.StringToHGlobalAnsi(gamePath),
-                data = IntPtr.Zero,
-                size = 0,
-                meta = IntPtr.Zero
-            };
-            runner.LoadGame(gameInfo);
-            var avInfo = retro!.GetSystemAvInfo();
-            sampleRate = avInfo.timing.sample_rate;
-            logger.LogInformation($"Sample rate: {sampleRate}");
-            logger.LogInformation("Game loaded");
-        }
-        return Task.CompletedTask;
+            path = Marshal.StringToHGlobalAnsi(gamePath),
+            data = IntPtr.Zero,
+            size = 0,
+            meta = IntPtr.Zero
+        };
+        runner.LoadGame(gameInfo);
+        var avInfo = retro!.GetSystemAvInfo();
+        sampleRate = avInfo.timing.sample_rate;
+        logger.LogInformation($"Sample rate: {sampleRate}");
+        logger.LogInformation("Game loaded");
     }
 
-    public Task Run()
-    {
-        if (runner != null)
-        {
-            runner.Start();
-            logger.LogInformation("Runner started");
-        }
-        return Task.CompletedTask;
-    }
-
-    public async Task Stop()
+    public virtual async Task StopAsync()
     {
         if (runner != null)
         {
@@ -147,7 +146,7 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
         }
     }
 
-    public Task SetInput(string key, bool down)
+    public virtual Task SetInput(string key, bool down)
     {
         try
         {
@@ -162,6 +161,18 @@ public class LibretroHandler(ILogger logger) : IProcessHandler
         return Task.CompletedTask;
     }
 
-    public double GetSampleRate() => sampleRate;
+    public virtual double GetSampleRate() => sampleRate;
 
+    private void LogMessage(retro_log_level level, string msg)
+    {
+        var logLevel = level switch
+        {
+            retro_log_level.RETRO_LOG_DEBUG => LogLevel.Debug,
+            retro_log_level.RETRO_LOG_INFO => LogLevel.Information,
+            retro_log_level.RETRO_LOG_WARN => LogLevel.Warning,
+            retro_log_level.RETRO_LOG_ERROR => LogLevel.Error,
+            _ => LogLevel.Information
+        };
+        logger.Log(logLevel, msg);
+    }
 }
