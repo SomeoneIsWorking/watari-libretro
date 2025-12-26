@@ -1,7 +1,8 @@
 ﻿using Watari;
 using watari_libretro;
+using SeparateProcess;
 
-if (RunnerProcess.Get(args) is RunnerProcess runner)
+if (ProcessRunner.Get(args) is ProcessRunner runner)
 {
     runner.Run().Wait();
     return 0;
