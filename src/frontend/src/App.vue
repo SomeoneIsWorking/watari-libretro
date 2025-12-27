@@ -52,16 +52,3 @@ onMounted(async () => {
 <style>
 @import './styles/main.css';
 </style>
-
-<style scoped>
-.app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.main-content {
-  flex: 1;
-  overflow: hidden;
-}
-</style>

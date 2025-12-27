@@ -12,7 +12,11 @@
         <div class="title-section">
           <h1 v-if="!isEditing" class="game-title">{{ game.Name }}</h1>
           <input v-else v-model="newName" class="game-title-input" @keyup.enter="saveRename" />
-          <button v-if="!isEditing" @click="startRename" class="rename-btn">✏️</button>
+          <button v-if="!isEditing" @click="startRename" class="rename-btn">
+            <svg class="icon-small" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+            </svg>
+          </button>
           <div v-else class="rename-actions">
             <button @click="saveRename" class="btn btn-success">Save</button>
             <button @click="cancelRename" class="btn btn-secondary">Cancel</button>
@@ -21,9 +25,19 @@
         <p class="game-path">{{ game.Path }}</p>
         <div class="actions">
           <h3>Available Cores:</h3>
-          <div v-for="core in availableCores" :key="core.id" class="core-item">
-            <button v-if="core.status.value === 'downloaded'" @click="playGame(core.id)" class="btn btn-success">Play with {{ core.name }}</button>
-            <button v-else @click="downloadCore(core.id)" class="btn btn-primary">Download {{ core.name }}</button>
+          <div class="cores-grid">
+            <div v-if="downloadedCores.length" class="core-row">
+              <h4 class="core-subtitle">Downloaded:</h4>
+              <div class="core-buttons">
+                <button v-for="core in downloadedCores" :key="core.id" @click="playGame(core.id)" class="btn btn-success">Play with {{ core.name }}</button>
+              </div>
+            </div>
+            <div v-if="notDownloadedCores.length" class="core-row">
+              <h4 class="core-subtitle">Not Downloaded:</h4>
+              <div class="core-buttons">
+                <button v-for="core in notDownloadedCores" :key="core.id" @click="downloadCore(core.id)" class="btn btn-primary">Download {{ core.name }}</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -57,6 +71,9 @@ const availableCores = computed(() => {
     return c.database.includes(game.value!.SystemName)
   })
 })
+
+const downloadedCores = computed(() => availableCores.value.filter(c => c.status.value === 'downloaded'))
+const notDownloadedCores = computed(() => availableCores.value.filter(c => c.status.value !== 'downloaded'))
 
 
 const backToGames = () => {
@@ -117,112 +134,3 @@ const playGame = async (coreId: string) => {
   }
 }
 </script>
-
-<style scoped>
-.game-details {
-  padding: 2rem;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.back-btn {
-  background: none;
-  border: none;
-  color: #00d4aa;
-  font-size: 1rem;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-
-.details-content {
-  display: flex;
-  gap: 2rem;
-}
-
-.cover-section {
-  flex-shrink: 0;
-}
-
-.large-cover {
-  width: 300px;
-  height: 400px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
-.placeholder-large-cover {
-  width: 300px;
-  height: 400px;
-  background: #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8rem;
-  color: #666;
-  border-radius: 8px;
-}
-
-.info-section {
-  flex: 1;
-}
-
-.title-section {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.game-title {
-  font-size: 2rem;
-  margin: 0;
-  color: white;
-}
-
-.game-title-input {
-  font-size: 2rem;
-  background: #333;
-  border: 1px solid #555;
-  color: white;
-  padding: 0.5rem;
-  border-radius: 4px;
-  flex: 1;
-}
-
-.rename-btn {
-  background: none;
-  border: none;
-  color: #00d4aa;
-  font-size: 1.5rem;
-  cursor: pointer;
-}
-
-.rename-btn:hover {
-  color: #00b894;
-}
-
-.rename-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.game-path {
-  color: #aaa;
-  margin-bottom: 0.5rem;
-}
-
-.game-core {
-  color: #ccc;
-  margin-bottom: 1rem;
-}
-
-.actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.core-item {
-  margin-bottom: 0.5rem;
-}
-</style>
