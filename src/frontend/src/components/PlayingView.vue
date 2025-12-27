@@ -88,35 +88,3 @@ const stopGame = async () => {
   }
 }
 </script>
-
-<style scoped>
-.playing-view {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  background: black;
-}
-
-.game-overlay {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  display: flex;
-  gap: 1rem;
-  z-index: 1000;
-}
-
-.menu-toggle,
-.stop-btn {
-  padding: 0.5rem 1rem;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border: 1px solid #444;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.stop-btn {
-  background: rgba(255, 0, 0, 0.7);
-}
-</style>

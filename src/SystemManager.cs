@@ -17,7 +17,7 @@ public class SystemManager(CoreManager coreManager)
             {
                 if (!systems.TryGetValue(db, out var existing))
                 {
-                    systems[db] = new SystemInfo(db, db, core.SupportedExtensions);
+                    systems[db] = new SystemInfo(db, core.SupportedExtensions);
                 }
                 else
                 {
