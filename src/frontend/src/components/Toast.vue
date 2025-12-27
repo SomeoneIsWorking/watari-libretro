@@ -7,7 +7,11 @@
       :class="toast.type"
     >
       {{ toast.message }}
-      <button @click="removeToast(index)" class="close-btn">&times;</button>
+      <button @click="removeToast(index)" class="close-btn">
+        <svg class="icon-small" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -17,48 +21,3 @@ import { useToast } from '../composables/useToast';
 
 const { toasts, removeToast } = useToast();
 </script>
-
-<style scoped>
-.toast-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.toast {
-  background: #333;
-  color: white;
-  padding: 10px 15px;
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-width: 250px;
-}
-
-.toast.success {
-  border-left: 4px solid #28a745;
-}
-
-.toast.error {
-  border-left: 4px solid #dc3545;
-}
-
-.toast.info {
-  border-left: 4px solid #007bff;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  margin-left: 10px;
-}
-</style>
