@@ -9,12 +9,13 @@ import Sidebar from "./components/Sidebar.vue";
 import GameDisplay from "./components/GameDisplay.vue";
 import Controls from "./components/Controls.vue";
 import Toast from "./components/Toast.vue";
+import type { FrameData } from "./generated/models";
 
 const { addToast } = useToast();
 const store = useCoresStore();
 const gameStore = useGameStore();
 
-const frame = ref<{ Pixels: string; Width: number; Height: number; PixelFormat: string } | null>(null);
+const frame = ref<FrameData | null>(null);
 
 onMounted(async () => {
   try {

@@ -9,9 +9,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import type { FrameData } from '../generated/models';
 
 const props = defineProps<{
-  frame: { Pixels: string; Width: number; Height: number; PixelFormat: string } | null;
+  frame: FrameData | null;
   fullScreen?: boolean;
 }>();
 
