@@ -1,5 +1,7 @@
 <template>
-  <div v-if="uiStore.isMenuOpen" class="backdrop" @click="uiStore.toggleMenu"></div>
+  <transition name="backdrop">
+    <div v-if="uiStore.isMenuOpen" class="backdrop" @click="uiStore.toggleMenu"></div>
+  </transition>
   <aside class="side-menu" :class="{ open: uiStore.isMenuOpen }">
     <div class="menu-header">
       <h2>Menu</h2>
@@ -109,18 +111,18 @@ const addGame = async () => {
   uiStore.toggleMenu()
 }
 
-const selectSystem = async (systemId: string) => {
+const selectSystem = async (systemName: string) => {
   showModal.value = false
-  await proceedWithSystem(systemId)
+  await proceedWithSystem(systemName)
 }
 
-const proceedWithSystem = async (systemId: string) => {
+const proceedWithSystem = async (systemName: string) => {
   const name = await getGameName(currentPath)
   const game = {
     Name: name,
     Path: currentPath,
-    SystemName: systemId,
-    Cover: ""
+    SystemName: systemName,
+    CoverName: ""
   }
   await LibretroApplication.AddGame(game)
   await gamesStore.loadLibrary()

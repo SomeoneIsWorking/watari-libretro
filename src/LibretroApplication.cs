@@ -55,6 +55,14 @@ public class LibretroApplication
 
     public async Task<List<SystemInfo>> GetSystems() => await systemManager.GetSystems();
 
+    public string? GetCover(string identifier)
+    {
+        var fullPath = context.PathCombine($"config/covers/{identifier}.png");
+        if (!File.Exists(fullPath)) return null;
+        var bytes = File.ReadAllBytes(fullPath);
+        return Convert.ToBase64String(bytes);
+    }
+
     public async Task LoadCore(string name)
     {
         var dylibPath = Path.Combine(coreManager.GetCoresDir(), $"{name}_libretro.dylib");
