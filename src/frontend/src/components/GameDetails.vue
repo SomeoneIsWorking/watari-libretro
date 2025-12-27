@@ -3,7 +3,7 @@
     <button @click="backToGames" class="back-btn">← Back to Games</button>
     <div v-if="game" class="details-content">
       <div class="cover-section">
-        <img v-if="game.Cover" :src="game.Cover" alt="Cover" class="large-cover" />
+        <img v-if="coverData" :src="coverData" alt="Cover" class="large-cover" />
         <div v-else class="placeholder-large-cover">
           {{ game.Name.charAt(0).toUpperCase() }}
         </div>
@@ -51,6 +51,7 @@ import { useUIStore } from '../stores/ui'
 import { useCoresStore } from '../stores/cores'
 import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
+import { useCover } from '../composables/useCover'
 import { LibretroApplication } from '../generated/libretroApplication'
 
 const uiStore = useUIStore()
@@ -64,6 +65,8 @@ const newName = ref('')
 const game = computed(() =>
   uiStore.selectedGame
 )
+
+const coverData = useCover(game.value?.CoverName || '')
 
 const availableCores = computed(() => {
   if (!game.value) return []

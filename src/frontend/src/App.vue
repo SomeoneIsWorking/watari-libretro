@@ -48,7 +48,3 @@ onMounted(async () => {
     <Toast />
   </div>
 </template>
-
-<style>
-@import './styles/main.css';
-</style>

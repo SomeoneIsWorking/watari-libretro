@@ -1,0 +1,14 @@
+@theme {
+  --color-accent: #00d4aa;
+  --color-accent-hover: #00b894;
+  --color-dark: #333;
+  --color-menu: #1a1a1a;
+  --color-menu-hover: #2a2a2a;
+  --color-menu-darker: #3a3a3a;
+  --color-cancel: #333;
+  --color-cancel-hover: #444;
+  --color-backdrop: rgba(0, 0, 0, 0.5);
+  --color-accent-10: rgba(0, 212, 170, 0.1);
+  --color-muted: #aaa;
+  --color-light: #ccc;
+}
