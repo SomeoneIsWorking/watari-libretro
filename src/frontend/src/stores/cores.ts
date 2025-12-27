@@ -12,11 +12,8 @@ export const useCoresStore = defineStore('cores', () => {
 
   const initialize = async () => {
     try {
-      const availableCores = await LibretroApplication.ListAvailableCores()
-      const downloadedList = await LibretroApplication.ListDownloadedCores()
-      const downloadedSet = new Set(downloadedList)
-
-      cores.value = availableCores.map(name => new Core(name, downloadedSet.has(name)))
+      const availableCores = await LibretroApplication.ListCoreInfos()
+      cores.value = availableCores.map(c => new Core(c.Name, c.Status === 'downloaded'))
     } catch (e) {
       console.error('Error loading cores:', e)
       throw e

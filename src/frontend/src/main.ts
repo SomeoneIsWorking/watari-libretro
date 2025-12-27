@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import './style.css'
+import './styles/main.css'
 import App from './App.vue'
 import { globalAddToast } from './composables/useToast'
 import { useCoresStore } from './stores/cores'
