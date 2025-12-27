@@ -38,4 +38,17 @@ public class GameManager(WatariContext context)
         library.RemoveAll(g => g.Path == path);
         SaveLibrary(library);
     }
+
+    public void RenameGame(string path, string newName)
+    {
+        var library = LoadLibrary();
+        var game = library.FirstOrDefault(g => g.Path == path);
+        if (game != null)
+        {
+            var updatedGame = game with { Name = newName };
+            library.Remove(game);
+            library.Add(updatedGame);
+            SaveLibrary(library);
+        }
+    }
 }
