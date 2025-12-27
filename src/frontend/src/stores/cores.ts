@@ -13,20 +13,20 @@ export const useCoresStore = defineStore('cores', () => {
   const initialize = async () => {
     try {
       const availableCores = await LibretroApplication.ListCoreInfos()
-      cores.value = availableCores.map(c => new Core(c.Name, c.Status === 'downloaded'))
+      cores.value = availableCores.map(c => new Core(c.Id, c.Name, c.Database, c.IsDownloaded))
     } catch (e) {
       console.error('Error loading cores:', e)
       throw e
     }
   }
 
-  const downloadCore = async (name: string) => {
-    const core = cores.value.find(c => c.name === name)
+  const downloadCore = async (id: string) => {
+    const core = cores.value.find(c => c.id === id)
     if (!core) return
 
     core.setDownloading()
     try {
-      await LibretroApplication.DownloadCore(name)
+      await LibretroApplication.DownloadCore(id)
       core.setDownloaded()
     } catch (e) {
       console.error('Error downloading core:', e)
@@ -35,13 +35,13 @@ export const useCoresStore = defineStore('cores', () => {
     }
   }
 
-  const loadCore = async (name: string) => {
-    const core = cores.value.find(c => c.name === name)
+  const loadCore = async (id: string) => {
+    const core = cores.value.find(c => c.id === id)
     if (!core) return
 
     try {
-      await LibretroApplication.LoadCore(name)
-      selectedCore.value = name
+      await LibretroApplication.LoadCore(id)
+      selectedCore.value = id
     } catch (e) {
       console.error('Error loading core:', e)
       throw e

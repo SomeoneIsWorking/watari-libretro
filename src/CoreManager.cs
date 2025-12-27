@@ -1,16 +1,22 @@
 using System.IO.Compression;
-using System.Text.Json;
 using Watari;
 using watari_libretro.Types;
 
 namespace watari_libretro;
 
-public record CoreInfo(string Name, string Status, Dictionary<string, string> Manifest);
+public record CoreInfo(
+    string Id,
+    string Name,
+    List<string> SupportedExtensions,
+    List<string> Database,
+    bool IsDownloaded
+);
 
 public class CoreManager(WatariContext context)
 {
     private readonly string coresDir = context.PathCombine("config", "cores");
     private readonly string manifestsDir = context.PathCombine("config", "manifests");
+    private readonly string coversDir = context.PathCombine("config", "covers");
     private readonly string infoZipCachePath = context.PathCombine("config", "info.zip");
 
     private async Task EnsureManifestsExtracted()
@@ -51,6 +57,22 @@ public class CoreManager(WatariContext context)
         OnDownloadComplete?.Invoke(name);
     }
 
+    public async Task DownloadCover(string systemName)
+    {
+        var coverPath = Path.Combine(coversDir, $"{systemName}.png");
+        Directory.CreateDirectory(coversDir);
+        using var client = new HttpClient();
+        var url = $"https://thumbnails.libretro.com/Named_Boxarts/{Uri.EscapeDataString(systemName)}.png";
+        var response = await client.GetAsync(url);
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = File.Create(coverPath);
+            await stream.CopyToAsync(fileStream);
+        }
+        // Optionally handle failure
+    }
+
     private async Task DoDownloadCore(string name, string zipPath)
     {
         using var client = new HttpClient();
@@ -75,56 +97,61 @@ public class CoreManager(WatariContext context)
         }
     }
 
-    public async Task<CoreInfo[]> ListCoreInfos()
-    {
-        var cores = await GetAvailableCores();
-        var downloaded = ListDownloadedCores().ToHashSet();
-        var result = new List<CoreInfo>();
-        foreach (var core in cores)
-        {
-            var status = downloaded.Contains(core) ? "downloaded" : "available";
-            var manifest = GetManifest(core);
-            result.Add(new CoreInfo(core, status, manifest));
-        }
-        
-        return result.ToArray();
-    }
-
-    private async Task<string[]> GetAvailableCores()
-    {
-        await EnsureManifestsExtracted();
-
-        var infoFiles = Directory.GetFiles(manifestsDir, "*.info");
-        var cores = infoFiles.Select(f => Path.GetFileNameWithoutExtension(f).Replace("_libretro", "")).ToArray();
-        return cores;
-    }
-
-    private Dictionary<string, string> GetManifest(string core)
+    public Dictionary<string, string> GetManifest(string core)
     {
         var path = Path.Combine(manifestsDir, $"{core}_libretro.info");
-        if (File.Exists(path))
+        if (!File.Exists(path))
         {
-            var lines = File.ReadAllLines(path);
-            var dict = new Dictionary<string, string>();
-            foreach (var line in lines)
-            {
-                if (line.Contains('='))
-                {
-                    var parts = line.Split('=', 2);
-                    dict[parts[0]] = parts[1];
-                }
-            }
-            return dict;
+            throw new Exception($"Manifest not found for core: {core}");
         }
-        return new Dictionary<string, string>();
+        var lines = File.ReadAllLines(path);
+        var dict = new Dictionary<string, string>();
+        foreach (var line in lines)
+        {
+            if (line.Contains('='))
+            {
+                var parts = line.Split('=', 2);
+                var key = parts[0].Trim();
+                var value = parts[1].Trim();
+                if (value.StartsWith('"') && value.EndsWith('"'))
+                {
+                    value = value[1..^1];
+                }
+                dict[key] = value;
+            }
+        }
+        return dict;
     }
 
     public string GetCoresDir() => coresDir;
 
-    public IEnumerable<string> ListDownloadedCores()
+    public string GetManifestsDir() => manifestsDir;
+
+    public string GetCoversDir() => coversDir;
+
+    public async Task<List<CoreInfo>> GetCores()
     {
-        Directory.CreateDirectory(coresDir);
-        var files = Directory.GetFiles(coresDir, "*_libretro.dylib");
-        return files.Select(f => Path.GetFileNameWithoutExtension(f).Replace("_libretro", ""));
+        await EnsureManifestsExtracted();
+
+        var infoFiles = Directory.GetFiles(manifestsDir, "*_libretro.info");
+        var cores = new List<CoreInfo>();
+        foreach (var file in infoFiles)
+        {
+            var id = Path.GetFileNameWithoutExtension(file).Replace("_libretro", "");
+            var manifest = GetManifest(id);
+            if (
+                !manifest.TryGetValue("corename", out var corename) ||
+                !manifest.TryGetValue("supported_extensions", out var extStr) ||
+                !manifest.TryGetValue("database", out var dbStr)
+            )
+            {
+                continue;
+            }
+            var database = dbStr.Split('|').ToList();
+            var supportedExtensions = extStr.Split('|').ToList();
+            var isDownloaded = File.Exists(Path.Combine(coresDir, $"{id}_libretro.dylib"));
+            cores.Add(new CoreInfo(id, corename, supportedExtensions, database, isDownloaded));
+        }
+        return cores;
     }
 }

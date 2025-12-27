@@ -3,18 +3,20 @@
     <button @click="backToGames" class="back-btn">← Back to Games</button>
     <div v-if="game" class="details-content">
       <div class="cover-section">
-        <img v-if="game.cover" :src="game.cover" alt="Cover" class="large-cover" />
+        <img v-if="game.Cover" :src="game.Cover" alt="Cover" class="large-cover" />
         <div v-else class="placeholder-large-cover">
-          {{ game.name.charAt(0).toUpperCase() }}
+          {{ game.Name.charAt(0).toUpperCase() }}
         </div>
       </div>
       <div class="info-section">
-        <h1 class="game-title">{{ game.name }}</h1>
-        <p class="game-path">{{ game.path }}</p>
-        <p class="game-core">Core: {{ game.core }}</p>
+        <h1 class="game-title">{{ game.Name }}</h1>
+        <p class="game-path">{{ game.Path }}</p>
         <div class="actions">
-          <button v-if="!isCoreDownloaded" @click="downloadCore" class="btn btn-primary">Download Core</button>
-          <button v-else @click="playGame" class="btn btn-success">Play</button>
+          <h3>Available Cores:</h3>
+          <div v-for="core in availableCores" :key="core.id" class="core-item">
+            <button v-if="core.status.value === 'downloaded'" @click="playGame(core.id)" class="btn btn-success">Play with {{ core.name }}</button>
+            <button v-else @click="downloadCore(core.id)" class="btn btn-primary">Download {{ core.name }}</button>
+          </div>
         </div>
       </div>
     </div>
@@ -24,49 +26,53 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useUIStore } from '../stores/ui'
-import { useGamesStore } from '../stores/games'
 import { useCoresStore } from '../stores/cores'
 import { useToast } from '../composables/useToast'
 import { LibretroApplication } from '../generated/libretroApplication'
 
 const uiStore = useUIStore()
-const gamesStore = useGamesStore()
 const coresStore = useCoresStore()
 const { addToast } = useToast()
 
 const game = computed(() =>
-  uiStore.selectedGameId ? gamesStore.getGame(uiStore.selectedGameId) : null
+  uiStore.selectedGame
 )
 
-const isCoreDownloaded = computed(() => {
-  if (!game.value) return false
-  const core = coresStore.cores.find(c => c.name === game.value?.core)
-  return core?.status.value === 'downloaded'
+const availableCores = computed(() => {
+  if (!game.value) return []
+  return coresStore.cores.filter(c => {
+    return c.database.includes(game.value!.SystemName)
+  })
 })
+
 
 const backToGames = () => {
   uiStore.backToGames()
 }
 
-const downloadCore = async () => {
+const downloadCore = async (coreId: string) => {
   if (!game.value) return
+  const core = coresStore.cores.find(c => c.id === coreId)
+  if (!core) return
   try {
-    await coresStore.downloadCore(game.value.core)
-    addToast(`Downloaded core: ${game.value.core}`, 'success')
+    await coresStore.downloadCore(coreId)
+    addToast(`Downloaded core: ${core.name}`, 'success')
   } catch (e) {
     addToast('Error downloading core: ' + e, 'error')
   }
 }
 
-const playGame = async () => {
+const playGame = async (coreId: string) => {
   if (!game.value) return
+  const core = coresStore.cores.find(c => c.id === coreId)
+  if (!core) return
   try {
-    await LibretroApplication.LoadCore(game.value.core)
-    await LibretroApplication.LoadGame(game.value.path)
+    await LibretroApplication.LoadCore(coreId)
+    await LibretroApplication.LoadGame(game.value.Path)
     await LibretroApplication.Run()
     coresStore.isRunning = true
     uiStore.setView('playing')
-    addToast('Game started!', 'success')
+    addToast(`Game started with ${core.name}!`, 'success')
   } catch (e) {
     addToast('Error starting game: ' + e, 'error')
   }
@@ -139,6 +145,11 @@ const playGame = async () => {
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: 1rem;
+}
+
+.core-item {
+  margin-bottom: 0.5rem;
 }
 </style>

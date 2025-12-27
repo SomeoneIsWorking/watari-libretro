@@ -14,7 +14,7 @@ public class LibretroApplication
     private readonly Dictionary<uint, bool> buttonStates = [];
     private readonly CoreManager coreManager;
     private readonly GameManager gameManager;
-    private readonly ManifestManager manifestManager;
+    private readonly SystemManager systemManager;
     private LibretroService? runner;
     public event Action<FrameData> OnFrameReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
@@ -26,41 +26,32 @@ public class LibretroApplication
         this.logger = logger;
         coreManager = new CoreManager(context);
         gameManager = new GameManager(context);
-        manifestManager = new ManifestManager(context);
+        systemManager = new SystemManager(coreManager);
         coreManager.OnDownloadProgress += (p) => OnDownloadProgress?.Invoke(p);
         coreManager.OnDownloadComplete += (n) => OnDownloadComplete?.Invoke(n);
     }
 
     public async Task DownloadCore(string name) => await coreManager.DownloadCore(name);
 
-    public async Task<CoreInfo[]> ListCoreInfos() => await coreManager.ListCoreInfos();
-
-    public IEnumerable<string> ListDownloadedCores() => coreManager.ListDownloadedCores();
+    public async Task<List<CoreInfo>> ListCoreInfos() => await coreManager.GetCores();
 
     public void SaveLibrary(List<GameInfo> games) => gameManager.SaveLibrary(games);
 
     public List<GameInfo> LoadLibrary() => gameManager.LoadLibrary();
 
-    public void AddGame(GameInfo game) 
+    public async Task AddGame(GameInfo game) 
     {
-        var systems = GetSystems();
-        if (!systems.Any(s => s.Name == game.SystemId))
+        var systems = await GetSystems();
+        if (!systems.Any(s => s.Name == game.SystemName))
         {
-            throw new Exception($"Unknown system: {game.SystemId}");
+            throw new Exception($"Unknown system: {game.SystemName}");
         }
         gameManager.AddGame(game);
     }
 
     public void RemoveGame(string path) => gameManager.RemoveGame(path);
 
-    public List<SystemInfo> GetSystems() => manifestManager.GetSystems();
-
-    public GameMetadata? GetGameMetadata(string gamePath)
-    {
-        // Can be called without loading core
-        var reader = new RomMetadataReader();
-        return reader.ReadMetadata(gamePath);
-    }
+    public async Task<List<SystemInfo>> GetSystems() => await systemManager.GetSystems();
 
     public async Task LoadCore(string name)
     {

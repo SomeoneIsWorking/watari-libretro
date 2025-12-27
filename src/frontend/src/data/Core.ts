@@ -1,25 +1,30 @@
 import { ref } from 'vue';
 
+type CoreStatus = 'available' | 'downloading' | 'downloaded';
+
 export class Core {
+    id: string;
     name: string;
-    status = ref<'available' | 'downloading' | 'downloaded'>('available');
+    database: string[];
+    status = ref<CoreStatus>('available');
     progress = ref<number>(0);
 
-    constructor(name: string, downloaded: boolean = false) {
+    constructor(id: string, name: string, database: string[], isDownloaded: boolean) {
+        this.id = id;
         this.name = name;
-        if (downloaded) {
-            this.status.value = 'downloaded';
-        }
-    }
-
-    setDownloading() {
-        this.status.value = 'downloading';
+        this.database = database;
+        this.status.value = isDownloaded ? 'downloaded' : 'available';
         this.progress.value = 0;
     }
 
     setDownloaded() {
         this.status.value = 'downloaded';
         this.progress.value = 100;
+    }
+
+    setDownloading() {
+        this.status.value = 'downloading';
+        this.progress.value = 0;
     }
 
     setProgress(progress: number) {

@@ -4,9 +4,9 @@
     <div class="core-list">
       <div
         v-for="core in store.getCoreList()"
-        :key="core.name"
+        :key="core.id"
         class="core-item"
-        :class="{ selected: store.selectedCore === core.name }"
+        :class="{ selected: store.selectedCore === core.id }"
       >
         <div class="core-info">
           <span class="core-name">{{ core.name }}</span>
@@ -16,7 +16,7 @@
         <div class="core-actions">
           <button
             v-if="core.status.value === 'available'"
-            @click="handleDownloadCore(core.name)"
+            @click="handleDownloadCore(core.id)"
             class="btn btn-primary"
           >
             Download
@@ -27,7 +27,7 @@
           </div>
           <button
             v-if="core.status.value === 'downloaded'"
-            @click="handleLoadCore(core.name)"
+            @click="handleLoadCore(core.id)"
             class="btn btn-secondary"
           >
             Load
@@ -49,19 +49,23 @@ const props = defineProps<{
   overlay?: boolean;
 }>();
 
-const handleDownloadCore = async (name: string) => {
+const handleDownloadCore = async (id: string) => {
+  const core = store.cores.find(c => c.id === id)
+  if (!core) return
   try {
-    await store.downloadCore(name);
-    addToast(`Downloaded core: ${name}`, 'success');
+    await store.downloadCore(id);
+    addToast(`Downloaded core: ${core.name}`, 'success');
   } catch (e) {
     addToast('Error downloading core: ' + e, 'error');
   }
 };
 
-const handleLoadCore = async (name: string) => {
+const handleLoadCore = async (id: string) => {
+  const core = store.cores.find(c => c.id === id)
+  if (!core) return
   try {
-    await store.loadCore(name);
-    addToast(`Loaded core: ${name}`, 'success');
+    await store.loadCore(id);
+    addToast(`Loaded core: ${core.name}`, 'success');
   } catch (e) {
     addToast('Error loading core: ' + e, 'error');
   }
