@@ -5,14 +5,15 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Core Launch (console)",
+      "name": "watari-libretro dev",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/examples/watari-libretro/bin/Debug/net9.0/watari-libretro.dll",
+      "program": "${workspaceFolder}/src/bin/Debug/net9.0/watari-libretro.dll",
       "args": ["dev"],
-      "cwd": "${workspaceFolder}/examples/watari-libretro",
+      "cwd": "${workspaceFolder}/src",
       "stopAtEntry": false,
-      "console": "internalConsole"
+      "console": "internalConsole",
+      "preLaunchTask": "dotnet: build"
     }
   ]
 }
