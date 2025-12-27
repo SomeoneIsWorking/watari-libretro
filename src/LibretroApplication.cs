@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Text.Json;
 using watari_libretro.Types;
 using Watari;
 using SeparateProcess;
@@ -6,61 +7,64 @@ using Microsoft.Extensions.Logging;
 
 namespace watari_libretro;
 
-public class LibretroApplication(WatariContext context, ILogger<LibretroApplication> logger)
+public class LibretroApplication
 {
-    private readonly ILogger logger = logger;
-    private readonly string coresDir = context.PathCombine("cores");
+    private readonly ILogger logger;
+    private readonly WatariContext context;
     private readonly Dictionary<uint, bool> buttonStates = [];
+    private readonly CoreManager coreManager;
+    private readonly GameManager gameManager;
+    private readonly ManifestManager manifestManager;
     private LibretroService? runner;
     public event Action<FrameData> OnFrameReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
     public event Action<string> OnDownloadComplete = delegate { };
 
-    public async Task DownloadCore(string name)
+    public LibretroApplication(WatariContext context, ILogger<LibretroApplication> logger)
     {
-        var zipPath = Path.Combine(coresDir, $"{name}.zip");
-        Directory.CreateDirectory(coresDir);
-        await DoDownloadCore(name, zipPath);
-
-        ZipFile.ExtractToDirectory(zipPath, coresDir, true);
-        var dylibPath = Path.Combine(coresDir, $"{name}_libretro.dylib");
-        File.Delete(zipPath);
-        OnDownloadComplete(name);
+        this.context = context;
+        this.logger = logger;
+        coreManager = new CoreManager(context);
+        gameManager = new GameManager(context);
+        manifestManager = new ManifestManager(context);
+        coreManager.OnDownloadProgress += (p) => OnDownloadProgress?.Invoke(p);
+        coreManager.OnDownloadComplete += (n) => OnDownloadComplete?.Invoke(n);
     }
 
-    private async Task DoDownloadCore(string name, string zipPath)
+    public async Task DownloadCore(string name) => await coreManager.DownloadCore(name);
+
+    public async Task<CoreInfo[]> ListCoreInfos() => await coreManager.ListCoreInfos();
+
+    public IEnumerable<string> ListDownloadedCores() => coreManager.ListDownloadedCores();
+
+    public void SaveLibrary(List<GameInfo> games) => gameManager.SaveLibrary(games);
+
+    public List<GameInfo> LoadLibrary() => gameManager.LoadLibrary();
+
+    public void AddGame(GameInfo game) 
     {
-        using var client = new HttpClient();
-        var url = $"https://buildbot.libretro.com/nightly/apple/osx/arm64/latest/{name}_libretro.dylib.zip";
-        var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-        response.EnsureSuccessStatusCode();
-        var total = response.Content.Headers.ContentLength;
-        using var stream = await response.Content.ReadAsStreamAsync();
-        using var fileStream = File.Create(zipPath);
-        var buffer = new byte[8192];
-        int bytesRead;
-        long totalRead = 0;
-        while ((bytesRead = await stream.ReadAsync(buffer)) > 0)
+        var systems = GetSystems();
+        if (!systems.Any(s => s.Name == game.SystemId))
         {
-            await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead));
-            totalRead += bytesRead;
-            if (total.HasValue)
-            {
-                var progress = (double)totalRead / total.Value * 100;
-                OnDownloadProgress(new DownloadProgress { Name = name, Progress = progress });
-            }
+            throw new Exception($"Unknown system: {game.SystemId}");
         }
+        gameManager.AddGame(game);
     }
 
-    public string[] ListAvailableCores() => new[]
-    {
-        "snes9x", "gambatte", "genesis_plus_gx", "nestopia", "fceumm", "mednafen_psx", "mgba", "bsnes"
-    };
+    public void RemoveGame(string path) => gameManager.RemoveGame(path);
 
+    public List<SystemInfo> GetSystems() => manifestManager.GetSystems();
+
+    public GameMetadata? GetGameMetadata(string gamePath)
+    {
+        // Can be called without loading core
+        var reader = new RomMetadataReader();
+        return reader.ReadMetadata(gamePath);
+    }
 
     public async Task LoadCore(string name)
     {
-        var dylibPath = Path.Combine(coresDir, $"{name}_libretro.dylib");
+        var dylibPath = Path.Combine(coreManager.GetCoresDir(), $"{name}_libretro.dylib");
         if (!File.Exists(dylibPath))
             throw new Exception("Download the core first");
 
@@ -110,13 +114,6 @@ public class LibretroApplication(WatariContext context, ILogger<LibretroApplicat
         await runner.StartAsync();
     }
 
-    public IEnumerable<string> ListDownloadedCores()
-    {
-        Directory.CreateDirectory(coresDir);
-        var files = Directory.GetFiles(coresDir, "*_libretro.dylib");
-        return files.Select(f => Path.GetFileNameWithoutExtension(f).Replace("_libretro", ""));
-    }
-
     public async Task SendKeyDown(string key)
     {
         logger.LogDebug("Key Down: {Key}", key);
@@ -150,6 +147,15 @@ public class LibretroApplication(WatariContext context, ILogger<LibretroApplicat
         catch
         {
             // Invalid key, ignore
+        }
+    }
+
+    public async Task Stop()
+    {
+        if (runner != null)
+        {
+            await runner.StopAsync();
+            runner = null;
         }
     }
 }
