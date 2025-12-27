@@ -1,34 +1,34 @@
 <template>
   <div class="game-grid">
     <div class="header">
-      <button @click="uiStore.backToSystems" class="back-btn">← Back to Systems</button>
-      <h2>{{ uiStore.currentSystem }} Games</h2>
+      <button @click="uiStore.backToSystems" class="back-btn">
+        ← Back to Systems
+      </button>
+      <h2>{{ uiStore.currentSystem?.Name }} Games</h2>
     </div>
     <div v-if="filteredGames.length === 0" class="empty-state">
-      <p>No games found for {{ uiStore.currentSystem }}. Add some games!</p>
+      <p>No games found for {{ uiStore.currentSystem?.Name }}. Add some games!</p>
     </div>
     <div v-else class="grid">
-      <GameCard
-        v-for="game in filteredGames"
-        :key="game.id"
-        :game="game"
-      />
+      <GameCard v-for="game in filteredGames" :key="game.Path" :game="game" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useGamesStore } from '../stores/games'
-import { useUIStore } from '../stores/ui'
-import GameCard from './GameCard.vue'
+import { computed } from "vue";
+import { useGamesStore } from "../stores/games";
+import { useUIStore } from "../stores/ui";
+import GameCard from "./GameCard.vue";
 
-const gamesStore = useGamesStore()
-const uiStore = useUIStore()
+const gamesStore = useGamesStore();
+const uiStore = useUIStore();
 
 const filteredGames = computed(() =>
-  gamesStore.getFilteredGames(uiStore.searchQuery, uiStore.currentSystem || undefined)
-)
+  gamesStore.games.filter((g) =>
+    uiStore.currentSystem ? g.SystemName === uiStore.currentSystem.Name : true
+  )
+);
 </script>
 
 <style scoped>

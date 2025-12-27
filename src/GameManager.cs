@@ -3,9 +3,6 @@ using Watari;
 
 namespace watari_libretro;
 
-public record GameInfo(string Name, string Path, string SystemId, string? Cover);
-public record SystemInfo(string Name, string DefaultCore, List<string> Extensions);
-
 public class GameManager(WatariContext context)
 {
     private readonly string libraryPath = context.PathCombine("config", "library.json");
