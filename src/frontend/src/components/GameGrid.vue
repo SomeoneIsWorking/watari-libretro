@@ -2,7 +2,10 @@
   <div class="game-grid">
     <div class="header">
       <button @click="uiStore.backToSystems" class="back-btn">
-        ← Back to Systems
+        <svg class="icon-small" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+        </svg>
+        Back to Systems
       </button>
       <h2>{{ uiStore.currentSystem?.Name }} Games</h2>
     </div>
@@ -30,46 +33,3 @@ const filteredGames = computed(() =>
   )
 );
 </script>
-
-<style scoped>
-.game-grid {
-  padding: 2rem;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.back-btn {
-  background: none;
-  border: none;
-  color: #00d4aa;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-.header h2 {
-  margin: 0;
-  color: white;
-}
-
-.empty-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 50vh;
-  color: #666;
-  font-size: 1.2rem;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 2rem;
-}
-</style>
