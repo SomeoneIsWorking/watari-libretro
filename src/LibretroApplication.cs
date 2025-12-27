@@ -51,6 +51,8 @@ public class LibretroApplication
 
     public void RemoveGame(string path) => gameManager.RemoveGame(path);
 
+    public void RenameGame(string path, string newName) => gameManager.RenameGame(path, newName);
+
     public async Task<List<SystemInfo>> GetSystems() => await systemManager.GetSystems();
 
     public async Task LoadCore(string name)

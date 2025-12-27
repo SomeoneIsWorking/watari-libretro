@@ -9,7 +9,15 @@
         </div>
       </div>
       <div class="info-section">
-        <h1 class="game-title">{{ game.Name }}</h1>
+        <div class="title-section">
+          <h1 v-if="!isEditing" class="game-title">{{ game.Name }}</h1>
+          <input v-else v-model="newName" class="game-title-input" @keyup.enter="saveRename" />
+          <button v-if="!isEditing" @click="startRename" class="rename-btn">✏️</button>
+          <div v-else class="rename-actions">
+            <button @click="saveRename" class="btn btn-success">Save</button>
+            <button @click="cancelRename" class="btn btn-secondary">Cancel</button>
+          </div>
+        </div>
         <p class="game-path">{{ game.Path }}</p>
         <div class="actions">
           <h3>Available Cores:</h3>
@@ -24,15 +32,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useUIStore } from '../stores/ui'
 import { useCoresStore } from '../stores/cores'
+import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
 import { LibretroApplication } from '../generated/libretroApplication'
 
 const uiStore = useUIStore()
 const coresStore = useCoresStore()
+const gamesStore = useGamesStore()
 const { addToast } = useToast()
+
+const isEditing = ref(false)
+const newName = ref('')
 
 const game = computed(() =>
   uiStore.selectedGame
@@ -48,6 +61,32 @@ const availableCores = computed(() => {
 
 const backToGames = () => {
   uiStore.backToGames()
+}
+
+const startRename = () => {
+  isEditing.value = true
+  newName.value = game.value!.Name
+}
+
+const saveRename = async () => {
+  if (newName.value && newName.value !== game.value!.Name) {
+    try {
+      await LibretroApplication.RenameGame(game.value!.Path, newName.value)
+      uiStore.selectedGame!.Name = newName.value
+      const gameInList = gamesStore.games.find(g => g.Path === game.value!.Path)
+      if (gameInList) {
+        gameInList.Name = newName.value
+      }
+      addToast('Game renamed successfully', 'success')
+    } catch (e) {
+      addToast('Error renaming game: ' + e, 'error')
+    }
+  }
+  isEditing.value = false
+}
+
+const cancelRename = () => {
+  isEditing.value = false
 }
 
 const downloadCore = async (coreId: string) => {
@@ -127,10 +166,44 @@ const playGame = async (coreId: string) => {
   flex: 1;
 }
 
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .game-title {
   font-size: 2rem;
-  margin-bottom: 0.5rem;
+  margin: 0;
   color: white;
+}
+
+.game-title-input {
+  font-size: 2rem;
+  background: #333;
+  border: 1px solid #555;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.rename-btn {
+  background: none;
+  border: none;
+  color: #00d4aa;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.rename-btn:hover {
+  color: #00b894;
+}
+
+.rename-actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .game-path {
