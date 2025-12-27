@@ -1,30 +1,29 @@
 <template>
   <div class="game-card" @click="selectGame">
     <div class="game-cover">
-      <img v-if="game.cover" :src="game.cover" alt="Cover" />
+      <img v-if="game.Cover" :src="game.Cover" alt="Cover" />
       <div v-else class="placeholder-cover">
-        {{ game.name.charAt(0).toUpperCase() }}
+        {{ game.Name.charAt(0).toUpperCase() }}
       </div>
     </div>
     <div class="game-info">
-      <h3 class="game-title">{{ game.name }}</h3>
-      <p class="game-core">{{ game.core || 'No core selected' }}</p>
+      <h3 class="game-title">{{ game.Name }}</h3>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { GameInfo } from '../generated/models';
 import { useUIStore } from '../stores/ui'
-import type { Game } from '../stores/games'
 
 const props = defineProps<{
-  game: Game
+  game: GameInfo
 }>()
 
-const uiStore = useUIStore()
+const uiStore = useUIStore();
 
 const selectGame = () => {
-  uiStore.selectGame(props.game.id)
+  uiStore.selectGame(props.game);
 }
 </script>
 

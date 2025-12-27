@@ -33,8 +33,8 @@
   <dialog ref="systemModal" class="system-modal">
     <h3>Select System</h3>
     <ul>
-      <li v-for="sys in applicableSystems" :key="sys.name">
-        <button @click="selectSystem(sys.name)" class="system-option">{{ sys.name }}</button>
+      <li v-for="sys in applicableSystems" :key="sys.Name">
+        <button @click="selectSystem(sys.Name)" class="system-option">{{ sys.Name }}</button>
       </li>
     </ul>
     <button @click="closeModal" class="cancel-btn">Cancel</button>
@@ -47,13 +47,14 @@ import { useUIStore } from '../stores/ui'
 import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
 import { LibretroApplication } from '../generated/libretroApplication'
+import type { SystemInfo } from '../generated/models'
 
 const uiStore = useUIStore()
 const gamesStore = useGamesStore()
 const { addToast } = useToast()
 
 const systemModal = ref<HTMLDialogElement>()
-const applicableSystems = ref<any[]>([])
+const applicableSystems = ref<SystemInfo[]>([])
 let currentPath = ''
 
 const navigateTo = (view: string) => {
@@ -77,9 +78,9 @@ const addGame = async () => {
       await gamesStore.loadSystems()
       currentPath = path
       const ext = path.split('.').pop()?.toLowerCase() || ''
-      applicableSystems.value = gamesStore.systems.filter(s => s.extensions.some(e => e.toLowerCase() === ext))
+      applicableSystems.value = gamesStore.systems.filter(s => s.Extensions.some(e => e.toLowerCase() === ext))
       if (applicableSystems.value.length === 1) {
-        await proceedWithSystem(applicableSystems.value[0].name)
+        await proceedWithSystem(applicableSystems.value[0]!.Name)
       } else if (applicableSystems.value.length > 1) {
         systemModal.value?.showModal()
       } else {
@@ -106,7 +107,7 @@ const proceedWithSystem = async (systemId: string) => {
   const game = {
     Name: name,
     Path: currentPath,
-    SystemId: systemId,
+    SystemName: systemId,
     Cover: ""
   }
   await LibretroApplication.AddGame(game)
@@ -115,14 +116,6 @@ const proceedWithSystem = async (systemId: string) => {
 }
 
 const getGameName = async (path: string) => {
-  try {
-    const metadata = await LibretroApplication.GetGameMetadata(path)
-    if (metadata && metadata.Name) {
-      return metadata.Name
-    }
-  } catch (e) {
-    // Ignore
-  }
   return path.split('/').pop()?.split('.')[0] || 'Unknown'
 }
 </script>

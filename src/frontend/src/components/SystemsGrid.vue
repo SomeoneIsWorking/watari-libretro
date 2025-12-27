@@ -6,15 +6,15 @@
     <div v-else class="grid">
       <div
         v-for="system in systemsWithGames"
-        :key="system.name"
+        :key="system.Name"
         class="system-card"
-        @click="selectSystem(system.name)"
+        @click="selectSystem(system)"
       >
         <div class="system-icon">
-          {{ system.name.charAt(0) }}
+          {{ system.Name.charAt(0) }}
         </div>
-        <h3 class="system-name">{{ system.name }}</h3>
-        <p class="game-count">{{ getGameCount(system.name) }} games</p>
+        <h3 class="system-name">{{ system.Name }}</h3>
+        <p class="game-count">{{ getGameCount(system.Name) }} games</p>
       </div>
     </div>
   </div>
@@ -24,17 +24,18 @@
 import { computed } from 'vue'
 import { useUIStore } from '../stores/ui'
 import { useGamesStore } from '../stores/games'
+import type { SystemInfo } from '../generated/models'
 
 const uiStore = useUIStore()
 const gamesStore = useGamesStore()
 
 const systemsWithGames = computed(() => gamesStore.getSystemsWithGames)
 
-const getGameCount = (system: string) => {
-  return gamesStore.games.filter(g => g.system === system).length
+const getGameCount = (systemName: string) => {
+  return gamesStore.games.filter(g => g.SystemName === systemName).length
 }
 
-const selectSystem = (system: string) => {
+const selectSystem = (system: SystemInfo) => {
   uiStore.selectSystem(system)
 }
 </script>

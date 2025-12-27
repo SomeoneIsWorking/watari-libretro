@@ -1,12 +1,13 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { GameInfo, SystemInfo } from '../generated/models'
 
 export type View = 'systems' | 'games' | 'details' | 'playing'
 
 export const useUIStore = defineStore('ui', () => {
   const currentView = ref<View>('systems')
-  const selectedGameId = ref<string | null>(null)
-  const currentSystem = ref<string | null>(null)
+  const selectedGame = ref<GameInfo | null>(null)
+  const currentSystem = ref<SystemInfo | null>(null)
   const isMenuOpen = ref(false)
   const searchQuery = ref('')
 
@@ -14,14 +15,14 @@ export const useUIStore = defineStore('ui', () => {
     currentView.value = view
   }
 
-  const selectSystem = (system: string) => {
+  const selectSystem = (system: SystemInfo) => {
     currentSystem.value = system
     currentView.value = 'games'
   }
 
-  const selectGame = (gameId: string | null) => {
-    selectedGameId.value = gameId
-    if (gameId) {
+  const selectGame = (game: GameInfo) => {
+    selectedGame.value = game
+    if (game) {
       currentView.value = 'details'
     }
   }
@@ -29,25 +30,21 @@ export const useUIStore = defineStore('ui', () => {
   const backToSystems = () => {
     currentView.value = 'systems'
     currentSystem.value = null
-    selectedGameId.value = null
+    selectedGame.value = null
   }
 
   const backToGames = () => {
     currentView.value = 'games'
-    selectedGameId.value = null
+    selectedGame.value = null
   }
 
   const toggleMenu = () => {
     isMenuOpen.value = !isMenuOpen.value
   }
 
-  const setSearchQuery = (query: string) => {
-    searchQuery.value = query
-  }
-
   return {
     currentView,
-    selectedGameId,
+    selectedGame,
     currentSystem,
     isMenuOpen,
     searchQuery,
@@ -57,6 +54,5 @@ export const useUIStore = defineStore('ui', () => {
     backToSystems,
     backToGames,
     toggleMenu,
-    setSearchQuery
   }
 })
