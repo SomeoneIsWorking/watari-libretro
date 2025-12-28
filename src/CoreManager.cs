@@ -57,6 +57,15 @@ public class CoreManager(WatariContext context)
         OnDownloadComplete?.Invoke(name);
     }
 
+    public void RemoveCore(string name)
+    {
+        var dylibPath = Path.Combine(coresDir, $"{name}_libretro.dylib");
+        if (File.Exists(dylibPath))
+        {
+            File.Delete(dylibPath);
+        }
+    }
+
     public async Task DownloadCover(string systemName)
     {
         var coverPath = Path.Combine(coversDir, $"{systemName}.png");

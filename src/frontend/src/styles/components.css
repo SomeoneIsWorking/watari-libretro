@@ -90,11 +90,11 @@
 }
 
 .game-card {
-  @apply bg-gray-700 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl;
+  @apply relative w-48 h-72 bg-gray-700 rounded-lg cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl overflow-hidden;
 }
 
 .game-cover {
-  @apply w-full h-[200px] bg-dark flex items-center justify-center;
+  @apply relative w-full h-full bg-dark flex items-center justify-center overflow-hidden;
 }
 
 .game-cover img {
@@ -102,19 +102,19 @@
 }
 
 .placeholder-cover {
-  @apply text-6xl text-gray-500 font-bold;
+  @apply text-4xl text-gray-600 font-bold;
 }
 
-.game-info {
-  @apply p-4;
+.game-card-overlay {
+  @apply absolute bottom-0 left-0 right-0 w-full bg-black/70 text-white p-2 opacity-0 transition-opacity duration-300 text-center;
 }
 
-.game-title {
-  @apply m-0 mb-2 text-white text-base;
+.game-card:hover .game-card-overlay {
+  @apply opacity-100;
 }
 
-.game-core {
-  @apply m-0 text-muted text-sm;
+.game-card-title {
+  @apply m-0 text-base;
 }
 
 .games-grid {
@@ -130,11 +130,11 @@
 }
 
 .system-card {
-  @apply bg-gray-800 rounded-lg p-8 text-center cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl;
+  @apply relative w-48 h-72 bg-gray-800 rounded-lg cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl overflow-hidden;
 }
 
 .system-cover {
-  @apply w-full h-[150px] mx-auto mb-4 bg-dark rounded-lg flex items-center justify-center overflow-hidden;
+  @apply relative w-full h-full bg-dark flex items-center justify-center overflow-hidden;
 }
 
 .system-cover img {
@@ -142,11 +142,23 @@
 }
 
 .system-placeholder {
-  @apply text-6xl text-gray-500 font-bold;
+  @apply text-4xl text-gray-600 font-bold;
+}
+
+.overlay {
+  @apply absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 opacity-0 transition-opacity duration-300 text-center;
+}
+
+.system-card:hover .overlay {
+  @apply opacity-100;
 }
 
 .system-name {
-  @apply m-0 mb-2 text-white text-xl;
+  @apply m-0 text-xl;
+}
+
+.game-count {
+  @apply mt-1 text-sm;
 }
 
 .empty-state {
@@ -278,7 +290,7 @@
 }
 
 .large-cover {
-  @apply w-[300px] h-[400px] object-cover rounded-lg;
+  @apply w-[300px] h-[450px] object-cover rounded-lg;
 }
 
 .placeholder-large-cover {
@@ -346,11 +358,7 @@
 }
 
 .game-display {
-  @apply flex-1 flex justify-center items-center bg-black border-2 border-gray-600 rounded-lg mb-4 overflow-hidden;
-}
-
-.game-display.full-screen {
-  @apply m-0 border-none rounded-none;
+  @apply flex-1 flex justify-center items-center bg-black overflow-hidden;
 }
 
 .placeholder {
@@ -471,6 +479,22 @@ progress {
   @apply m-0 text-accent text-xl;
 }
 
-.status {
-  @apply text-sm text-light;
+.edit-btn {
+  @apply bg-transparent border-none text-white cursor-pointer p-1 rounded hover:bg-menu-hover absolute top-2 right-2 opacity-0 transition-opacity duration-300;
+}
+
+.system-cover:hover .edit-btn {
+  @apply opacity-100;
+}
+
+.btn-sm {
+  @apply px-2 py-1 text-xs;
+}
+
+.cores-list {
+  @apply max-h-64 overflow-y-auto;
+}
+
+.core-item {
+  @apply p-3 bg-gray-700 rounded border border-gray-600;
 }

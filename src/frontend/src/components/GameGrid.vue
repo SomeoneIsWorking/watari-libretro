@@ -2,9 +2,7 @@
   <div class="game-grid">
     <div class="header">
       <button @click="uiStore.backToSystems" class="back-btn">
-        <svg class="icon-small" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
-        </svg>
+        <ArrowLeft class="icon-small" />
         Back to Systems
       </button>
       <h2>{{ uiStore.currentSystem?.Name }} Games</h2>
@@ -23,6 +21,7 @@ import { computed } from "vue";
 import { useGamesStore } from "../stores/games";
 import { useUIStore } from "../stores/ui";
 import GameCard from "./GameCard.vue";
+import { ArrowLeft } from 'lucide-vue-next'
 
 const gamesStore = useGamesStore();
 const uiStore = useUIStore();

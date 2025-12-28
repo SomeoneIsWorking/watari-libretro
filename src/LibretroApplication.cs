@@ -33,6 +33,8 @@ public class LibretroApplication
 
     public async Task DownloadCore(string name) => await coreManager.DownloadCore(name);
 
+    public void RemoveCore(string name) => coreManager.RemoveCore(name);
+
     public async Task<List<CoreInfo>> ListCoreInfos() => await coreManager.GetCores();
 
     public void SaveLibrary(List<GameInfo> games) => gameManager.SaveLibrary(games);

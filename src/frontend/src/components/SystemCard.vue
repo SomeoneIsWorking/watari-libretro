@@ -5,18 +5,26 @@
       <div v-else class="system-placeholder">
         {{ system.Name.charAt(0) }}
       </div>
+      <div class="overlay">
+        <h3 class="system-name">{{ system.Name }}</h3>
+        <p class="game-count">{{ gameCount }} games</p>
+      </div>
+      <button @click.stop="openEditDialog" class="edit-btn">
+        <Settings class="icon-small" />
+      </button>
     </div>
-    <h3 class="system-name">{{ system.Name }}</h3>
-    <p class="game-count">{{ gameCount }} games</p>
   </div>
+  <SystemEditDialog v-model="isEditOpen" :system="system" />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useUIStore } from '../stores/ui'
 import { useGamesStore } from '../stores/games'
 import type { SystemInfo } from '../generated/models'
 import { useCover } from '../composables/useCover'
+import SystemEditDialog from './SystemEditDialog.vue'
+import { Settings } from 'lucide-vue-next'
 
 const props = defineProps<{
   system: SystemInfo
@@ -24,6 +32,7 @@ const props = defineProps<{
 
 const uiStore = useUIStore()
 const gamesStore = useGamesStore()
+const isEditOpen = ref(false)
 
 const coverData = useCover(props.system.CoverName)
 
@@ -33,5 +42,9 @@ const gameCount = computed(() => {
 
 const selectSystem = () => {
   uiStore.selectSystem(props.system)
+}
+
+const openEditDialog = () => {
+  isEditOpen.value = true
 }
 </script>
