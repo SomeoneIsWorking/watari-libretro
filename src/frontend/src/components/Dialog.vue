@@ -1,15 +1,15 @@
 <template>
   <Teleport to="body">
     <Transition name="dialog">
-      <div v-if="modelValue" class="dialog-overlay" @click.self="modelValue = false">
-        <div class="dialog-content">
-          <div class="dialog-header">
-            <h3 class="dialog-title">{{ title }}</h3>
-            <button @click="modelValue = false" class="dialog-close">
-              <X class="icon-small" />
+      <div v-if="modelValue" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]" @click.self="modelValue = false">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg min-w-[400px] max-w-[95vw] max-h-[90vh] flex flex-col">
+          <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="m-0 text-xl font-semibold text-gray-900 dark:text-white">{{ title }}</h3>
+            <button @click="modelValue = false" class="bg-none border-none cursor-pointer p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center">
+              <X class="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
-          <div class="dialog-body">
+          <div class="p-4 overflow-y-auto flex-1 text-gray-700 dark:text-gray-300">
             <slot></slot>
           </div>
         </div>

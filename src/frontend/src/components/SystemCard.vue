@@ -1,5 +1,5 @@
 <template>
-  <div class="system-card" @click="selectSystem">
+  <div class="system-card group" @click="selectSystem">
     <div class="system-cover">
       <img v-if="coverData" :src="coverData" alt="Cover" />
       <div v-else class="system-placeholder">
@@ -9,8 +9,8 @@
         <h3 class="system-name">{{ system.Name }}</h3>
         <p class="game-count">{{ gameCount }} games</p>
       </div>
-      <button @click.stop="openEditDialog" class="edit-btn">
-        <Settings class="icon-small" />
+      <button @click.stop="openEditDialog" class="absolute top-2 right-2 z-10 bg-gray-800 bg-opacity-75 hover:bg-opacity-100 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+        <Settings class="w-4 h-4" />
       </button>
     </div>
   </div>
