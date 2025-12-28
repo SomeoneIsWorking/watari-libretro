@@ -26,9 +26,11 @@ public class GameManager(WatariContext context)
 
     public void AddGame(GameInfo game)
     {
+        Console.WriteLine($"Adding game: {game.Name} at {game.Path}");
         var library = LoadLibrary();
         library.RemoveAll(g => g.Path == game.Path);
         library.Add(game);
+        Console.WriteLine($"Adding game: {game.Name} at {game.Path}");
         SaveLibrary(library);
     }
 

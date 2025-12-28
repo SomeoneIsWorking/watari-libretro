@@ -1,6 +1,6 @@
 <template>
   <div class="game-details">
-    <button @click="backToGames" class="back-btn">← Back to Games</button>
+    <button @click="backToGames" class="back-btn mb-4">← Back</button>
     <div v-if="game" class="details-content">
       <div class="cover-section">
         <img v-if="coverData" :src="coverData" alt="Cover" class="large-cover" />
@@ -21,7 +21,7 @@
           </div>
         </div>
         <p class="game-path">{{ game.Path }}</p>
-        <div class="actions">
+        <div class="flex flex-col gap-4">
           <h3>Available Cores:</h3>
           <div class="cores-grid">
             <div v-if="downloadedCores.length" class="core-row">

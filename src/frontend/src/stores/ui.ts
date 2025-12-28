@@ -15,7 +15,7 @@ export const useUIStore = defineStore('ui', () => {
     currentView.value = view
   }
 
-  const selectSystem = (system: SystemInfo) => {
+  const selectSystem = (system: SystemInfo | null) => {
     currentSystem.value = system
     currentView.value = 'games'
   }
