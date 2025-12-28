@@ -1,9 +1,9 @@
 <template>
-  <div class="systems-grid">
+  <div class="p-8">
     <div v-if="systemsWithGames.length === 0" class="empty-state">
       <p>No systems with games. Add some games to get started!</p>
     </div>
-    <div v-else class="systems-inner-grid">
+    <div v-else class="systems-grid">
       <SystemCard
         v-for="system in systemsWithGames"
         :key="system.Name"

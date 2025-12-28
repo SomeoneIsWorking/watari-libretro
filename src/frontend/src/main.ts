@@ -4,6 +4,7 @@ import './styles/main.css'
 import App from './App.vue'
 import { globalAddToast } from './composables/useToast'
 import { useCoresStore } from './stores/cores'
+import { useSettingsStore } from './stores/settings'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -16,7 +17,10 @@ app.config.errorHandler = (err) => {
   console.error(err)
 }
 async function initializeApp() {
-  await useCoresStore().initialize()
+  await Promise.all([
+    useCoresStore().initialize(),
+    useSettingsStore().loadSettings()
+  ])
   app.mount('#app')
 }
 

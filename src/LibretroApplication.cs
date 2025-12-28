@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using System.Text.Json;
 using watari_libretro.Types;
 using Watari;
@@ -15,6 +14,7 @@ public class LibretroApplication
     private readonly CoreManager coreManager;
     private readonly GameManager gameManager;
     private readonly SystemManager systemManager;
+    private SteamGridDBApi? _steamGridDBApi;
     private LibretroService? runner;
     public event Action<FrameData> OnFrameReceived = delegate { };
     public event Action<DownloadProgress> OnDownloadProgress = delegate { };
@@ -29,6 +29,8 @@ public class LibretroApplication
         systemManager = new SystemManager(coreManager);
         coreManager.OnDownloadProgress += (p) => OnDownloadProgress?.Invoke(p);
         coreManager.OnDownloadComplete += (n) => OnDownloadComplete?.Invoke(n);
+        var settings = GetSettings();
+        _steamGridDBApi = !string.IsNullOrEmpty(settings.SteamGridDBApiKey) ? new SteamGridDBApi(settings.SteamGridDBApiKey) : null;
     }
 
     public async Task DownloadCore(string name) => await coreManager.DownloadCore(name);
@@ -63,6 +65,67 @@ public class LibretroApplication
         if (!File.Exists(fullPath)) return null;
         var bytes = File.ReadAllBytes(fullPath);
         return Convert.ToBase64String(bytes);
+    }
+
+    public AppSettings GetSettings()
+    {
+        var settingsPath = context.PathCombine("config", "settings.json");
+        if (File.Exists(settingsPath))
+        {
+            var json = File.ReadAllText(settingsPath);
+            return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+        }
+        return new AppSettings();
+    }
+
+    public void SaveSettings(AppSettings settings)
+    {
+        var settingsPath = context.PathCombine("config", "settings.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+        var json = JsonSerializer.Serialize(settings);
+        File.WriteAllText(settingsPath, json);
+        _steamGridDBApi = !string.IsNullOrEmpty(settings.SteamGridDBApiKey) ? new SteamGridDBApi(settings.SteamGridDBApiKey) : null;
+    }
+
+    public async Task<List<CoverOption>> SearchCovers(string name)
+    {
+        if (_steamGridDBApi == null) throw new Exception("SteamGridDB API not configured. Set STEAMGRIDDB_API_KEY environment variable.");
+        var options = await _steamGridDBApi.Search(name);
+        return options;
+    }
+
+    public async Task DownloadSystemCover(string systemName, string fullUrl)
+    {
+        var systems = await GetSystems();
+        var system = systems.Find(s => s.Name == systemName)
+            ?? throw new Exception($"System not found: {systemName}");
+        var coverPath = Path.Combine(coreManager.GetCoversDir(), $"{system.CoverName}.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(coverPath)!);
+        using var client = new HttpClient();
+        var response = await client.GetAsync(fullUrl);
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = File.Create(coverPath);
+            await stream.CopyToAsync(fileStream);
+        }
+    }
+
+    public async Task DownloadGameCover(string gameId, string fullUrl)
+    {
+        var games = LoadLibrary();
+        var game = games.Find(g => g.Path == gameId)
+            ?? throw new Exception($"Game not found: {gameId}");
+        var coverPath = Path.Combine(coreManager.GetCoversDir(), $"{game.CoverName}.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(coverPath)!);
+        using var client = new HttpClient();
+        var response = await client.GetAsync(fullUrl);
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = File.Create(coverPath);
+            await stream.CopyToAsync(fileStream);
+        }
     }
 
     public async Task LoadCore(string name)
