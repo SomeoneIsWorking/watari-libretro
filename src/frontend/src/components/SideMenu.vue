@@ -52,6 +52,8 @@
       </li>
     </ul>
   </Dialog>
+
+  <SettingsModal v-model="showSettingsModal" />
 </template>
 
 <script setup lang="ts">
@@ -62,6 +64,7 @@ import { useToast } from "../composables/useToast";
 import { LibretroApplication } from "../generated/libretroApplication";
 import type { SystemInfo } from "../generated/models";
 import Dialog from "./Dialog.vue";
+import SettingsModal from "./SettingsModal.vue";
 import { X, LayoutGrid, List, Plus, Settings } from "lucide-vue-next";
 
 const uiStore = useUIStore();
@@ -71,6 +74,7 @@ const { addToast } = useToast();
 const applicableSystems = ref<SystemInfo[]>([]);
 let currentPath = "";
 const showModal = ref(false);
+const showSettingsModal = ref(false);
 
 const navigateTo = (view: string) => {
   if (view === "systems") {
@@ -80,8 +84,7 @@ const navigateTo = (view: string) => {
     uiStore.setView("games");
     uiStore.currentSystem = null;
   } else if (view === "settings") {
-    // For now, just toast
-    addToast("Settings not implemented yet", "info");
+    showSettingsModal.value = true;
   }
   uiStore.toggleMenu();
 };

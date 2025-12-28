@@ -1,13 +1,14 @@
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
-import type { GameInfo, SystemInfo } from '../generated/models'
+import { Game } from '../data/Game'
+import { System } from '../data/System'
 
 export type View = 'systems' | 'games' | 'details' | 'playing'
 
 export const useUIStore = defineStore('ui', () => {
   const currentView = ref<View>('systems')
-  const selectedGame = ref<GameInfo | null>(null)
-  const currentSystem = ref<SystemInfo | null>(null)
+  const selectedGame = shallowRef<Game | null>(null)
+  const currentSystem = shallowRef<System | null>(null)
   const isMenuOpen = ref(false)
   const searchQuery = ref('')
 
@@ -15,12 +16,12 @@ export const useUIStore = defineStore('ui', () => {
     currentView.value = view
   }
 
-  const selectSystem = (system: SystemInfo | null) => {
+  const selectSystem = (system: System | null) => {
     currentSystem.value = system
     currentView.value = 'games'
   }
 
-  const selectGame = (game: GameInfo) => {
+  const selectGame = (game: Game) => {
     selectedGame.value = game
     if (game) {
       currentView.value = 'details'

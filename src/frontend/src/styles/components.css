@@ -85,27 +85,11 @@
   @apply text-4xl text-gray-600 font-bold;
 }
 
-.game-card-overlay {
-  @apply absolute bottom-0 left-0 right-0 w-full bg-black/70 text-white p-2 opacity-0 transition-opacity duration-300 text-center;
-}
-
-.game-card:hover .game-card-overlay {
-  @apply opacity-100;
-}
-
 .game-card-title {
   @apply m-0 text-base;
 }
 
-.games-grid {
-  @apply grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-8;
-}
-
 .systems-grid {
-  @apply p-8 h-full overflow-y-auto;
-}
-
-.systems-inner-grid {
   @apply grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4;
 }
 
@@ -125,12 +109,8 @@
   @apply text-4xl text-gray-600 font-bold;
 }
 
-.overlay {
-  @apply absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 opacity-0 transition-opacity duration-300 text-center;
-}
-
-.system-card:hover .overlay {
-  @apply opacity-100;
+.card-overlay {
+  @apply absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 transition-opacity duration-300 text-center;
 }
 
 .system-name {
@@ -205,6 +185,10 @@
   @apply border-l-4 border-blue-500;
 }
 
+.card-border{
+  @apply border rounded border-white/10  hover:border-white
+}
+
 .close-btn {
   @apply bg-transparent border-none text-white text-xl cursor-pointer ml-2.5 flex items-center justify-center p-1 rounded hover:bg-gray-600;
 }
@@ -246,11 +230,11 @@
 }
 
 .large-cover {
-  @apply w-[300px] h-[450px] object-cover rounded-lg;
+  @apply object-cover rounded-lg;
 }
 
 .placeholder-large-cover {
-  @apply w-[300px] h-[400px] bg-dark flex items-center justify-center text-8xl text-gray-500 rounded-lg;
+  @apply bg-dark flex items-center justify-center text-8xl text-gray-500 rounded-lg;
 }
 
 .info-section {

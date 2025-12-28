@@ -1,6 +1,3 @@
-using Watari;
-using System.IO;
-
 namespace watari_libretro;
 
 public class SystemManager(CoreManager coreManager)

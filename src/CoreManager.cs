@@ -12,12 +12,23 @@ public record CoreInfo(
     bool IsDownloaded
 );
 
-public class CoreManager(WatariContext context)
+public class CoreManager
 {
-    private readonly string coresDir = context.PathCombine("config", "cores");
-    private readonly string manifestsDir = context.PathCombine("config", "manifests");
-    private readonly string coversDir = context.PathCombine("config", "covers");
-    private readonly string infoZipCachePath = context.PathCombine("config", "info.zip");
+    private readonly WatariContext _context;
+    private readonly string coresDir;
+    private readonly string manifestsDir;
+    private readonly string coversDir;
+    private readonly string infoZipCachePath;
+
+
+    public CoreManager(WatariContext context)
+    {
+        _context = context;
+        coresDir = _context.PathCombine("config", "cores");
+        manifestsDir = _context.PathCombine("config", "manifests");
+        coversDir = _context.PathCombine("config", "covers");
+        infoZipCachePath = _context.PathCombine("config", "info.zip");
+    }
 
     private async Task EnsureManifestsExtracted()
     {
@@ -64,22 +75,6 @@ public class CoreManager(WatariContext context)
         {
             File.Delete(dylibPath);
         }
-    }
-
-    public async Task DownloadCover(string systemName)
-    {
-        var coverPath = Path.Combine(coversDir, $"{systemName}.png");
-        Directory.CreateDirectory(coversDir);
-        using var client = new HttpClient();
-        var url = $"https://thumbnails.libretro.com/Named_Boxarts/{Uri.EscapeDataString(systemName)}.png";
-        var response = await client.GetAsync(url);
-        if (response.IsSuccessStatusCode)
-        {
-            using var stream = await response.Content.ReadAsStreamAsync();
-            using var fileStream = File.Create(coverPath);
-            await stream.CopyToAsync(fileStream);
-        }
-        // Optionally handle failure
     }
 
     private async Task DoDownloadCore(string name, string zipPath)
@@ -136,8 +131,6 @@ public class CoreManager(WatariContext context)
 
     public string GetManifestsDir() => manifestsDir;
 
-    public string GetCoversDir() => coversDir;
-
     public async Task<List<CoreInfo>> GetCores()
     {
         await EnsureManifestsExtracted();
@@ -163,4 +156,6 @@ public class CoreManager(WatariContext context)
         }
         return cores;
     }
+
+    public string GetCoversDir() => coversDir;
 }

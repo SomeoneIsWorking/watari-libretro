@@ -2,7 +2,7 @@ import { type ShallowRef, type ShallowReactive, customRef, shallowReactive } fro
 
 type ShallowArray<T> = ShallowRef<ShallowReactive<T[]>>;
 
-export function shallowReactiveRef<T>(arr: T[]): ShallowArray<T> {
+export function shallowArray<T>(arr: T[]): ShallowArray<T> {
     return customRef((track, trigger) => {
         let value = shallowReactive(arr);
         return {

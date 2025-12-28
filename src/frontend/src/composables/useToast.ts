@@ -1,14 +1,15 @@
 import { ref } from 'vue';
 
+type ToastType = 'success' | 'error' | 'info' | 'warning';
 interface Toast {
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: ToastType;
 }
 
 const toasts = ref<Toast[]>([]);
 
 export const useToast = () => {
-  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const addToast = (message: string, type: ToastType = 'info') => {
     toasts.value.push({ message, type });
     setTimeout(() => {
       toasts.value.shift();

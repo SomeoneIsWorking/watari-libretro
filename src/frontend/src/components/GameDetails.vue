@@ -2,10 +2,16 @@
   <div class="game-details">
     <button @click="backToGames" class="back-btn mb-4">← Back</button>
     <div v-if="game" class="details-content">
-      <div class="cover-section">
-        <img v-if="coverData" :src="coverData" alt="Cover" class="large-cover" />
+      <div class="cover-section relative">
+        <img v-if="coverData" :src="coverData" alt="Cover" class="large-cover w-[300px] h-[450px] overflow-hidden" />
         <div v-else class="placeholder-large-cover">
           {{ game.Name.charAt(0).toUpperCase() }}
+        </div>
+        <div class="absolute inset-0 bg-black/5 bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity flex items-start justify-end p-2">
+          <button @click="downloadCover" class="text-white bg-black/40 rounded cursor-pointer hover:text-gray-300 p-2 m-2" :disabled="isLoadingCovers">
+            <Download v-if="!isLoadingCovers" :size="24" />
+            <LoaderCircle v-else class="animate-spin" :size="24" />
+          </button>
         </div>
       </div>
       <div class="info-section">
@@ -33,13 +39,31 @@
             <div v-if="notDownloadedCores.length" class="core-row">
               <h4 class="core-subtitle">Not Downloaded:</h4>
               <div class="core-buttons">
-                <button v-for="core in notDownloadedCores" :key="core.id" @click="downloadCore(core.id)" class="btn btn-primary">Download {{ core.name }}</button>
+                <div v-for="core in notDownloadedCores" :key="core.id" class="mb-2">
+                  <button v-if="core.status.value === 'available'" @click="downloadCore(core.id)" class="btn btn-primary">Download {{ core.name }}</button>
+                  <div v-else-if="core.status.value === 'downloading'" class="flex flex-col gap-2 items-start">
+                    <span>Downloading {{ core.name }}...</span>
+                    <div class="w-full h-2 bg-gray-200 rounded overflow-hidden">
+                      <div class="h-full bg-green-500 transition-all duration-300" :style="{ width: `${core.progress.value}%` }"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <CoverSearchModal
+      v-model="showSearchModal"
+      :covers="coverOptions"
+      :initial-name="game?.Name"
+      title="Select Game Cover"
+      :download="selectCover"
+      :is-searching="isSearching"
+      @search="handleSearch"
+    />
   </div>
 </template>
 
@@ -49,23 +73,30 @@ import { useUIStore } from '../stores/ui'
 import { useCoresStore } from '../stores/cores'
 import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
-import { useCover } from '../composables/useCover'
 import { LibretroApplication } from '../generated/libretroApplication'
-import { Pencil } from 'lucide-vue-next'
+import { Pencil, Download, LoaderCircle } from 'lucide-vue-next'
+import type { CoverOption } from '../generated/models'
+import CoverSearchModal from './CoverSearchModal.vue'
+import { useSettingsStore } from '../stores/settings'
 
 const uiStore = useUIStore()
 const coresStore = useCoresStore()
 const gamesStore = useGamesStore()
+const settingsStore = useSettingsStore()
 const { addToast } = useToast()
 
 const isEditing = ref(false)
 const newName = ref('')
+const showSearchModal = ref(false)
+const coverOptions = ref<CoverOption[]>([])
+const isSearching = ref(false)
+const isLoadingCovers = ref(false)
 
 const game = computed(() =>
   uiStore.selectedGame
 )
 
-const coverData = useCover(game.value?.CoverName || '')
+const coverData = computed(() => game.value?.getCoverSrc())
 
 const availableCores = computed(() => {
   if (!game.value) return []
@@ -133,6 +164,49 @@ const playGame = async (coreId: string) => {
     addToast(`Game started with ${core.name}!`, 'success')
   } catch (e) {
     addToast('Error starting game: ' + e, 'error')
+  }
+}
+
+const downloadCover = async () => {
+  if (!game.value) return
+  if (!settingsStore.hasApiKey) {
+    addToast('SteamGridDB API key is required to search for covers. Please set it in Settings.', 'warning')
+    return
+  }
+  isLoadingCovers.value = true
+  try {
+    const options = await LibretroApplication.SearchCovers(game.value.Name)
+    coverOptions.value = options
+    showSearchModal.value = true
+  } catch (e) {
+    addToast('Error searching covers: ' + e, 'error')
+  } finally {
+    isLoadingCovers.value = false
+  }
+}
+
+const handleSearch = async (term: string) => {
+  isSearching.value = true
+  try {
+    const options = await LibretroApplication.SearchCovers(term)
+    coverOptions.value = options
+  } catch (e) {
+    addToast('Error searching covers: ' + e, 'error')
+  } finally {
+    isSearching.value = false
+  }
+}
+
+const selectCover = async (fullUrl: string) => {
+  if (!game.value) return
+  try {
+    await LibretroApplication.DownloadGameCover(game.value.Path, fullUrl)
+    // Update the cover data
+    const base64 = await LibretroApplication.GetCover(game.value.CoverName)
+    game.value.setCoverData(base64)
+    addToast('Cover downloaded successfully', 'success')
+  } catch (e) {
+    addToast('Error downloading cover: ' + e, 'error')
   }
 }
 </script>
