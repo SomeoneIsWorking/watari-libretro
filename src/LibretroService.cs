@@ -122,6 +122,7 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
             throw new Exception("Load core first");
         }
 
+        logger.LogInformation($"Loading game: {gamePath}");
         runner ??= new RetroRunner(retro);
         var gameInfo = new retro_game_info
         {
@@ -130,10 +131,15 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
             size = 0,
             meta = IntPtr.Zero
         };
-        runner.LoadGame(gameInfo);
-        var avInfo = retro!.GetSystemAvInfo();
+        bool success = runner.LoadGame(gameInfo);
+        var avInfo = retro.GetSystemAvInfo();
         sampleRate = avInfo.timing.sample_rate;
-        logger.LogInformation($"Sample rate: {sampleRate}");
+
+        if (!success)
+        {
+            logger.LogError("Failed to load game");
+            throw new Exception("Failed to load game");
+        }
         logger.LogInformation("Game loaded");
     }
 

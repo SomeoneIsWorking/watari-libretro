@@ -907,6 +907,9 @@ public unsafe class LibretroCore
 
     public retro_pixel_format PixelFormat { get; private set; }
     public double SampleRate { get; private set; }
+    public Dictionary<string, string> Variables { get; } = new();
+    public static List<uint> EnvironmentCommands { get; } = new();
+    public static List<string> QueriedVariables { get; } = new();
 
     public LibretroCore()
     {
@@ -1093,6 +1096,7 @@ public unsafe class LibretroCore
 
     private static bool Environment(uint cmd, IntPtr data)
     {
+        EnvironmentCommands.Add(cmd);
         if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_SET_PIXEL_FORMAT)
         {
             if (data != IntPtr.Zero && currentInstance != null)
@@ -1116,7 +1120,42 @@ public unsafe class LibretroCore
             Marshal.StructureToPtr(logCallback, data, false);
             return true;
         }
-        // Handle other commands as needed
+        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_GET_VARIABLE)
+        {
+            if (data != IntPtr.Zero && currentInstance != null)
+            {
+                var variable = Marshal.PtrToStructure<retro_variable>(data);
+                string key = Marshal.PtrToStringAnsi(variable.key) ?? "";
+                QueriedVariables.Add(key);
+                if (currentInstance.OnLog != null)
+                {
+                    currentInstance.OnLog(retro_log_level.RETRO_LOG_INFO, $"GET_VARIABLE: {key}");
+                }
+                if (currentInstance.Variables.TryGetValue(key, out var value))
+                {
+                    variable.value = Marshal.StringToHGlobalAnsi(value);
+                    Marshal.StructureToPtr(variable, data, false);
+                    if (currentInstance.OnLog != null)
+                    {
+                        currentInstance.OnLog(retro_log_level.RETRO_LOG_INFO, $"SET_VARIABLE: {key} = {value}");
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE)
+        {
+            return false;
+        }
+        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_SET_HW_RENDER)
+        {
+            if (currentInstance != null && currentInstance.OnLog != null)
+            {
+                currentInstance.OnLog(retro_log_level.RETRO_LOG_INFO, "SET_HW_RENDER requested");
+            }
+            return false;
+        }
         return false;
     }
 
