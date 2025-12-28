@@ -5,9 +5,9 @@
       <div v-else class="placeholder-cover">
         {{ game.Name.charAt(0).toUpperCase() }}
       </div>
-    </div>
-    <div class="game-info">
-      <h3 class="game-title">{{ game.Name }}</h3>
+      <div class="game-card-overlay">
+        <h3 class="game-card-title">{{ game.Name }}</h3>
+      </div>
     </div>
   </div>
 </template>

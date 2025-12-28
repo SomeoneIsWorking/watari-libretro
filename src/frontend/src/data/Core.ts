@@ -35,4 +35,9 @@ export class Core {
         this.status.value = 'available';
         this.progress.value = 0;
     }
+
+    setRemoved() {
+        this.status.value = 'available';
+        this.progress.value = 0;
+    }
 }

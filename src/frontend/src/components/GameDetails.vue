@@ -13,9 +13,7 @@
           <h1 v-if="!isEditing" class="game-title">{{ game.Name }}</h1>
           <input v-else v-model="newName" class="game-title-input" @keyup.enter="saveRename" />
           <button v-if="!isEditing" @click="startRename" class="rename-btn">
-            <svg class="icon-small" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-            </svg>
+            <Pencil class="icon-small" />
           </button>
           <div v-else class="rename-actions">
             <button @click="saveRename" class="btn btn-success">Save</button>
@@ -53,6 +51,7 @@ import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
 import { useCover } from '../composables/useCover'
 import { LibretroApplication } from '../generated/libretroApplication'
+import { Pencil } from 'lucide-vue-next'
 
 const uiStore = useUIStore()
 const coresStore = useCoresStore()
