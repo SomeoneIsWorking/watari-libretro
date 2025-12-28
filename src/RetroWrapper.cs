@@ -4,6 +4,7 @@ public class RetroWrapper : IDisposable
 {
     private readonly LibretroCore core;
     public retro_pixel_format PixelFormat => core.PixelFormat;
+    public Dictionary<string, string> Variables => core.Variables;
 
     public RetroWrapper()
     {

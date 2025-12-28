@@ -41,7 +41,7 @@ public class LibretroApplication
 
     public List<GameInfo> LoadLibrary() => gameManager.LoadLibrary();
 
-    public async Task AddGame(GameInfo game) 
+    public async Task AddGame(GameInfo game)
     {
         var systems = await GetSystems();
         if (!systems.Any(s => s.Name == game.SystemName))
@@ -99,7 +99,10 @@ public class LibretroApplication
 
     public void LoadGame(string gamePath)
     {
-        if (runner == null) throw new Exception("Load core first");
+        if (runner == null)
+        {
+            throw new Exception("Load core first");
+        }
         runner.LoadGame(gamePath);
 
         // Initialize audio with correct sample rate

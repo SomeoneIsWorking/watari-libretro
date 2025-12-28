@@ -39,8 +39,8 @@ class RetroRunner
         return tsc.Task;
     }
 
-    internal void LoadGame(retro_game_info gameInfo)
+    internal bool LoadGame(retro_game_info gameInfo)
     {
-        retro.LoadGame(gameInfo);
+        return retro.LoadGame(gameInfo);
     }
 }
