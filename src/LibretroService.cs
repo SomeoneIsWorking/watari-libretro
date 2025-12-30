@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using watari_libretro.Types;
 using Microsoft.Extensions.Logging;
 using SeparateProcess;
+using watari_libretro.libretro;
 
 namespace watari_libretro;
 
@@ -9,7 +10,7 @@ namespace watari_libretro;
 public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
 {
     private readonly ILogger<LibretroService> logger = logger;
-    private RetroWrapper? retro;
+    private LibretroCore? retro;
     private RetroRunner? runner;
     private readonly Dictionary<uint, bool> buttonStates = [];
     private double sampleRate = 44100;
@@ -29,9 +30,9 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
 
     public virtual Task LoadCore(string corePath)
     {
-        retro = new RetroWrapper();
-        retro.OnLog = LogMessage;
-        retro.OnFrame = (data, w, h, pitch) =>
+        retro = new LibretroCore(corePath);
+        retro.Log += LogMessage;
+        retro.VideoRefresh += (data, w, h, pitch) =>
         {
             try
             {
@@ -54,7 +55,7 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
             }
         };
 
-        retro.OnSample = (left, right) =>
+        retro.AudioSample += (left, right) =>
         {
             try
             {
@@ -71,7 +72,7 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
             }
         };
 
-        retro.OnSampleBatch = (data, frames) =>
+        retro.AudioSampleBatch += (data, frames) =>
         {
             try
             {
@@ -93,7 +94,7 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
             }
         };
 
-        retro.OnCheckInput = (port, device, index, inputId) =>
+        retro.InputState += (port, device, index, inputId) =>
         {
             try
             {
@@ -110,7 +111,7 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
             }
         };
 
-        retro.LoadCore(corePath);
+        retro.Init();
         logger.LogInformation("Core loaded");
         return Task.CompletedTask;
     }
@@ -124,11 +125,16 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
 
         logger.LogInformation($"Loading game: {gamePath}");
         runner ??= new RetroRunner(retro);
+        
+        // Load ROM data
+        byte[] romData = File.ReadAllBytes(gamePath);
+        GCHandle handle = GCHandle.Alloc(romData, GCHandleType.Pinned);
+        
         var gameInfo = new retro_game_info
         {
             path = Marshal.StringToHGlobalAnsi(gamePath),
-            data = IntPtr.Zero,
-            size = 0,
+            data = handle.AddrOfPinnedObject(),
+            size = (nuint)romData.Length,
             meta = IntPtr.Zero
         };
         bool success = runner.LoadGame(gameInfo);

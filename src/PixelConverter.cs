@@ -1,3 +1,5 @@
+using watari_libretro.libretro;
+
 namespace watari_libretro;
 
 public static class PixelConverter
@@ -74,7 +76,7 @@ public static class PixelConverter
                 ushort rgb1555 = srcRow[x];
                 uint r = (uint)((rgb1555 >> 10) & 0x1F) * 255 / 31;
                 uint g = (uint)((rgb1555 >> 5) & 0x1F) * 255 / 31;
-                uint b = (uint)((rgb1555) & 0x1F) * 255 / 31;
+                uint b = (uint)(rgb1555 & 0x1F) * 255 / 31;
                 uint a = 0xFF;
                 dstRow[x] = (r) | (g << 8) | (b << 16) | (a << 24);
             }

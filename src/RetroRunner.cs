@@ -1,7 +1,9 @@
 using System.Diagnostics;
-using watari_libretro;
+using watari_libretro.libretro;
 
-class RetroRunner(RetroWrapper retro)
+namespace watari_libretro;
+
+public class RetroRunner(LibretroCore retro)
 {
     private TaskCompletionSource? tsc;
     private bool running;
@@ -11,7 +13,7 @@ class RetroRunner(RetroWrapper retro)
         running = true;
         Stopwatch stopwatch = new();
         stopwatch.Start();
-        
+
         tsc = new TaskCompletionSource();
         Task.Run(() =>
         {
@@ -37,7 +39,7 @@ class RetroRunner(RetroWrapper retro)
         tsc = null;
     }
 
-    internal bool LoadGame(retro_game_info gameInfo)
+    public bool LoadGame(retro_game_info gameInfo)
     {
         return retro.LoadGame(gameInfo);
     }

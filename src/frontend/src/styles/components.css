@@ -8,7 +8,7 @@
 }
 
 .backdrop {
-  @apply fixed inset-0 bg-backdrop z-40;
+  @apply fixed inset-0 bg-backdrop z-10;
 }
 
 .backdrop-enter-active, .backdrop-leave-active {
@@ -146,7 +146,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .side-menu {
-  @apply fixed top-0 -right-[300px] w-[300px] h-screen bg-menu border-l border-menu transition-all duration-300 z-50 flex flex-col shadow-2xl;
+  @apply fixed top-0 -right-[300px] w-[300px] h-screen bg-menu border-l border-menu transition-all duration-300 z-30 flex flex-col shadow-2xl;
 }
 
 .side-menu.open {
@@ -335,7 +335,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .game-overlay {
-  @apply absolute top-4 right-4 flex gap-4 z-[1000];
+  @apply absolute top-4 right-4 flex gap-4 z-10;
 }
 
 .menu-toggle,
@@ -384,7 +384,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .sidebar.overlay {
-  @apply fixed top-0 right-0 h-screen z-[1000] bg-gray-800/90;
+  @apply fixed top-0 right-0 h-screen z-10 bg-gray-800/90;
 }
 
 .sidebar h2 {

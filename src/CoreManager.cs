@@ -169,8 +169,8 @@ public class CoreManager
         if (!File.Exists(dylibPath))
             throw new Exception("Core not downloaded");
 
-        using var retro = new RetroWrapper();
-        retro.LoadCore(dylibPath);
+        using var retro = new LibretroCore(dylibPath);
+        retro.Init();
         var options = retro.VariableDefinitions;
         return options;
     }
@@ -183,14 +183,18 @@ public class CoreManager
             var json = File.ReadAllText(optionsPath);
             return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
         }
-        return new();
+        return [];
     }
 
     public void SaveCoreOptionValues(string coreId, Dictionary<string, string> values)
     {
+        var defaults = GetCoreOptions(coreId);
+        var nonDefaults = values
+            .Where(kv => !defaults.TryGetValue(kv.Key, out var def) || kv.Value != def)
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
         Directory.CreateDirectory(coreOptionsDir);
         var optionsPath = Path.Combine(coreOptionsDir, $"{coreId}.json");
-        var json = JsonSerializer.Serialize(values);
+        var json = JsonSerializer.Serialize(nonDefaults);
         File.WriteAllText(optionsPath, json);
     }
 

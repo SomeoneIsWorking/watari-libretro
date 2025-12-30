@@ -3,6 +3,7 @@ using watari_libretro.Types;
 using Watari;
 using SeparateProcess;
 using Microsoft.Extensions.Logging;
+using watari_libretro.libretro;
 
 namespace watari_libretro;
 
