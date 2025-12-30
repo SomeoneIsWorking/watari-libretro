@@ -1,3 +1,6 @@
 [submodule "SeparateProcess"]
 	path = SeparateProcess
 	url = https://github.com/SomeoneIsWorking/SeparateProcess.git
+[submodule "Watari"]
+	path = Watari
+	url = https://github.com/SomeoneIsWorking/Watari.git
