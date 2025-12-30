@@ -24,16 +24,19 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error(event.reason)
   event.preventDefault() // Prevent the default browser behavior
 })
+
 async function initializeApp() {
   await Promise.all([
     useCoresStore().initialize(),
     useGamesStore().loadLibrary(),
     useSettingsStore().loadSettings()
   ])
+  console.log('Application initialized')
   app.mount('#app')
 }
 
+console.log('Starting application initialization...')
+
 initializeApp().catch((e) => {
-  globalAddToast(`Failed to initialize application: ${e}`, 'error')
   console.error('Failed to initialize application:', e)
 })

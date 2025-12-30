@@ -46,6 +46,26 @@
   border-color: #007bff;
 }
 
+select {
+  @apply bg-gray-700 border border-gray-600 text-white rounded px-2 py-1;
+}
+
+select:focus {
+  @apply border-blue-500 outline-none;
+}
+
+input[type="range"] {
+  @apply bg-gray-700 border border-gray-600 rounded;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @apply appearance-none w-4 h-4 bg-blue-600 rounded-full cursor-pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer border-0;
+}
+
 /* Scrollbar */
 .scrollbar {
   scrollbar-width: thin;
