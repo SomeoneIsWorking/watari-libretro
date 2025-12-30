@@ -39,8 +39,13 @@ export const useCoresStore = defineStore('cores', () => {
     if (!core) return
 
     core.setDownloading()
-    await LibretroApplication.DownloadCore(id)
-    core.setDownloaded()
+    try {
+      await LibretroApplication.DownloadCore(id)
+      core.setDownloaded()
+    } catch (err) {
+      core.setRemoved()
+      throw err
+    }
   }
 
   const loadCore = async (id: string) => {
