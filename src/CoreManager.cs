@@ -1,6 +1,8 @@
 using System.IO.Compression;
 using Watari;
 using watari_libretro.Types;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace watari_libretro;
 
@@ -15,19 +17,23 @@ public record CoreInfo(
 public class CoreManager
 {
     private readonly WatariContext _context;
+    private readonly ILogger _logger;
     private readonly string coresDir;
     private readonly string manifestsDir;
     private readonly string coversDir;
     private readonly string infoZipCachePath;
+    private readonly string coreOptionsDir;
 
 
-    public CoreManager(WatariContext context)
+    public CoreManager(WatariContext context, ILogger logger)
     {
         _context = context;
+        _logger = logger;
         coresDir = _context.PathCombine("config", "cores");
         manifestsDir = _context.PathCombine("config", "manifests");
         coversDir = _context.PathCombine("config", "covers");
         infoZipCachePath = _context.PathCombine("config", "info.zip");
+        coreOptionsDir = _context.PathCombine("config", "core-options");
     }
 
     private async Task EnsureManifestsExtracted()
@@ -155,6 +161,37 @@ public class CoreManager
             cores.Add(new CoreInfo(id, corename, supportedExtensions, database, isDownloaded));
         }
         return cores;
+    }
+
+    public Dictionary<string, string> GetCoreOptions(string coreId)
+    {
+        var dylibPath = Path.Combine(coresDir, $"{coreId}_libretro.dylib");
+        if (!File.Exists(dylibPath))
+            throw new Exception("Core not downloaded");
+
+        using var retro = new RetroWrapper();
+        retro.LoadCore(dylibPath);
+        var options = retro.VariableDefinitions;
+        return options;
+    }
+
+    public Dictionary<string, string> LoadCoreOptionValues(string coreId)
+    {
+        var optionsPath = Path.Combine(coreOptionsDir, $"{coreId}.json");
+        if (File.Exists(optionsPath))
+        {
+            var json = File.ReadAllText(optionsPath);
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new();
+        }
+        return new();
+    }
+
+    public void SaveCoreOptionValues(string coreId, Dictionary<string, string> values)
+    {
+        Directory.CreateDirectory(coreOptionsDir);
+        var optionsPath = Path.Combine(coreOptionsDir, $"{coreId}.json");
+        var json = JsonSerializer.Serialize(values);
+        File.WriteAllText(optionsPath, json);
     }
 
     public string GetCoversDir() => coversDir;

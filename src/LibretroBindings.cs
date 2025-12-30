@@ -908,6 +908,7 @@ public unsafe class LibretroCore
     public retro_pixel_format PixelFormat { get; private set; }
     public double SampleRate { get; private set; }
     public Dictionary<string, string> Variables { get; } = new();
+    public Dictionary<string, string> VariableDefinitions { get; } = new();
     public static List<uint> EnvironmentCommands { get; } = new();
     public static List<string> QueriedVariables { get; } = new();
 
@@ -1144,9 +1145,26 @@ public unsafe class LibretroCore
             }
             return false;
         }
-        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE)
+        if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_SET_VARIABLES)
         {
-            return false;
+            if (data != IntPtr.Zero && currentInstance != null)
+            {
+                IntPtr ptr = data;
+                while (true)
+                {
+                    retro_variable variable = Marshal.PtrToStructure<retro_variable>(ptr);
+                    if (variable.key == IntPtr.Zero) break;
+                    string key = Marshal.PtrToStringAnsi(variable.key) ?? "";
+                    string value = Marshal.PtrToStringAnsi(variable.value) ?? "";
+                    currentInstance.VariableDefinitions[key] = value;
+                    if (currentInstance.OnLog != null)
+                    {
+                        currentInstance.OnLog(retro_log_level.RETRO_LOG_INFO, $"SET_VARIABLES: {key} = {value}");
+                    }
+                    ptr += Marshal.SizeOf<retro_variable>();
+                }
+            }
+            return true;
         }
         if (cmd == (uint)retro_environment.RETRO_ENVIRONMENT_SET_HW_RENDER)
         {

@@ -169,6 +169,18 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
 
     public virtual double GetSampleRate() => sampleRate;
 
+    public virtual Task SetCoreOptions(Dictionary<string, string> options)
+    {
+        if (retro != null)
+        {
+            foreach (var kvp in options)
+            {
+                retro.Variables[kvp.Key] = kvp.Value;
+            }
+        }
+        return Task.CompletedTask;
+    }
+
     private void LogMessage(retro_log_level level, string msg)
     {
         var logLevel = level switch

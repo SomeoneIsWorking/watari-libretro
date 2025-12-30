@@ -33,14 +33,24 @@
             <div v-if="downloadedCores.length" class="core-row">
               <h4 class="core-subtitle">Downloaded:</h4>
               <div class="core-buttons">
-                <button v-for="core in downloadedCores" :key="core.id" @click="playGame(core.id)" class="btn btn-success">Play with {{ core.name }}</button>
+                <div v-for="core in downloadedCores" :key="core.id" class="flex items-center gap-2 mb-2">
+                  <button @click="playGame(core.id)" class="btn btn-success flex-1">Play with {{ core.name }}</button>
+                  <button @click="openCoreSettings(core)" class="btn btn-secondary p-2">
+                    <Settings :size="16" />
+                  </button>
+                </div>
               </div>
             </div>
             <div v-if="notDownloadedCores.length" class="core-row">
               <h4 class="core-subtitle">Not Downloaded:</h4>
               <div class="core-buttons">
                 <div v-for="core in notDownloadedCores" :key="core.id" class="mb-2">
-                  <button v-if="core.status.value === 'available'" @click="downloadCore(core.id)" class="btn btn-primary">Download {{ core.name }}</button>
+                  <div v-if="core.status.value === 'available'" class="flex items-center gap-2">
+                    <button @click="downloadCore(core.id)" class="btn btn-primary flex-1">Download {{ core.name }}</button>
+                    <button @click="openCoreSettings(core)" class="btn btn-secondary p-2">
+                      <Settings :size="16" />
+                    </button>
+                  </div>
                   <div v-else-if="core.status.value === 'downloading'" class="flex flex-col gap-2 items-start">
                     <span>Downloading {{ core.name }}...</span>
                     <div class="w-full h-2 bg-gray-200 rounded overflow-hidden">
@@ -64,20 +74,24 @@
       :is-searching="isSearching"
       @search="handleSearch"
     />
+
+    <CoreSettingsModal v-model="showCoreSettingsModal" :core="selectedCoreForSettings" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { useUIStore } from '../stores/ui'
 import { useCoresStore } from '../stores/cores'
 import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
 import { LibretroApplication } from '../generated/libretroApplication'
-import { Pencil, Download, LoaderCircle } from 'lucide-vue-next'
+import { Pencil, Download, LoaderCircle, Settings } from 'lucide-vue-next'
 import type { CoverOption } from '../generated/models'
 import CoverSearchModal from './CoverSearchModal.vue'
+import CoreSettingsModal from './CoreSettingsModal.vue'
 import { useSettingsStore } from '../stores/settings'
+import type { Core } from '../data/Core'
 
 const uiStore = useUIStore()
 const coresStore = useCoresStore()
@@ -91,6 +105,8 @@ const showSearchModal = ref(false)
 const coverOptions = ref<CoverOption[]>([])
 const isSearching = ref(false)
 const isLoadingCovers = ref(false)
+const showCoreSettingsModal = ref(false)
+const selectedCoreForSettings = shallowRef<Core | null>(null)
 
 const game = computed(() =>
   uiStore.selectedGame
@@ -208,5 +224,10 @@ const selectCover = async (fullUrl: string) => {
   } catch (e) {
     addToast('Error downloading cover: ' + e, 'error')
   }
+}
+
+const openCoreSettings = (core: Core) => {
+  selectedCoreForSettings.value = core
+  showCoreSettingsModal.value = true
 }
 </script>

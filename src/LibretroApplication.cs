@@ -24,7 +24,7 @@ public class LibretroApplication
     {
         this.context = context;
         this.logger = logger;
-        coreManager = new CoreManager(context);
+        coreManager = new CoreManager(context, logger);
         gameManager = new GameManager(context);
         systemManager = new SystemManager(coreManager);
         coreManager.OnDownloadProgress += (p) => OnDownloadProgress?.Invoke(p);
@@ -148,6 +148,10 @@ public class LibretroApplication
         runner.OnAudio += OnAudioReceived;
 
         await runner.LoadCore(dylibPath);
+
+        // Load and set saved core options
+        var savedOptions = coreManager.LoadCoreOptionValues(name);
+        await runner.SetCoreOptions(savedOptions);
     }
 
     private void OnAudioReceived(AudioData audioData)
@@ -227,4 +231,10 @@ public class LibretroApplication
             runner = null;
         }
     }
+
+    public Dictionary<string, string> GetCoreOptions(string coreId) => coreManager.GetCoreOptions(coreId);
+
+    public Dictionary<string, string> LoadCoreOptionValues(string coreId) => coreManager.LoadCoreOptionValues(coreId);
+
+    public void SaveCoreOptionValues(string coreId, Dictionary<string, string> values) => coreManager.SaveCoreOptionValues(coreId, values);
 }

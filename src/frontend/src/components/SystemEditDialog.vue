@@ -27,6 +27,9 @@
                   >
                     Remove
                   </button>
+                  <button @click="openCoreSettings(core)" class="btn btn-secondary p-1">
+                    <Settings :size="16" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -59,19 +62,23 @@
     :is-searching="isSearching"
     @search="handleCoverSearch"
   />
+
+  <CoreSettingsModal v-model="showCoreSettingsModal" :core="selectedCoreForSettings" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, shallowRef } from 'vue'
 import Dialog from './Dialog.vue'
 import CoverSearchModal from './CoverSearchModal.vue'
+import CoreSettingsModal from './CoreSettingsModal.vue'
 import { LibretroApplication } from '../generated/libretroApplication'
 import type { CoverOption } from '../generated/models'
 import { useSettingsStore } from '../stores/settings'
 import { useToast } from '../composables/useToast'
 import { useCoresStore } from '../stores/cores'
 import type { System } from '../data/System'
-import { Download, LoaderCircle } from 'lucide-vue-next'
+import type { Core } from '../data/Core'
+import { Download, LoaderCircle, Settings } from 'lucide-vue-next'
 
 const props = defineProps<{
   system: System
@@ -91,6 +98,8 @@ const showCoverModal = ref(false)
 const coverOptions = ref<CoverOption[]>([])
 const isSearching = ref(false)
 const isLoadingCovers = ref(false)
+const showCoreSettingsModal = ref(false)
+const selectedCoreForSettings = shallowRef<Core | null>(null)
 const settingsStore = useSettingsStore()
 const coresStore = useCoresStore()
 const { addToast } = useToast()
@@ -147,5 +156,10 @@ const selectCover = async (fullUrl: string) => {
   } catch (e) {
     addToast('Error downloading cover: ' + e, 'error')
   }
+}
+
+const openCoreSettings = (core: Core) => {
+  selectedCoreForSettings.value = core
+  showCoreSettingsModal.value = true
 }
 </script>
