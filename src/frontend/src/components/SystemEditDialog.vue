@@ -5,24 +5,24 @@
         <div>
           <h4 class="text-accent mb-2">Cores for {{ system.Name }}</h4>
           <div class="cores-list space-y-2">
-            <div v-for="core in compatibleCores" :key="core.Id" class="core-item">
+            <div v-for="core in compatibleCores" :key="core.id" class="core-item">
               <div class="flex justify-between items-center">
-                <span>{{ core.Name }}</span>
+                <span>{{ core.name }}</span>
                 <div class="flex gap-2">
                   <button
-                    v-if="!core.IsDownloaded && !downloadingCores.has(core.Id)"
-                    @click="downloadCore(core.Id)"
+                    v-if="!core.isDownloaded && core.status.value !== 'downloading'"
+                    @click="downloadCore(core.id)"
                     class="btn btn-primary btn-sm"
                   >
                     Download
                   </button>
-                  <div v-else-if="downloadingCores.has(core.Id)" class="flex items-center gap-2">
-                    <progress :value="downloadProgress[core.Id] || 0" max="100" class="flex-1 h-2"></progress>
-                    <span class="text-sm">{{ Math.round(downloadProgress[core.Id] || 0) }}%</span>
+                  <div v-else-if="core.status.value === 'downloading'" class="flex items-center gap-2">
+                    <progress :value="core.progress.value" max="100" class="flex-1 h-2"></progress>
+                    <span class="text-sm">{{ Math.round(core.progress.value) }}%</span>
                   </div>
                   <button
                     v-else
-                    @click="removeCore(core.Id)"
+                    @click="removeCore(core.id)"
                     class="btn btn-secondary btn-sm"
                   >
                     Remove
@@ -62,13 +62,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import Dialog from './Dialog.vue'
 import CoverSearchModal from './CoverSearchModal.vue'
 import { LibretroApplication } from '../generated/libretroApplication'
-import type { CoreInfo, CoverOption } from '../generated/models'
+import type { CoverOption } from '../generated/models'
 import { useSettingsStore } from '../stores/settings'
 import { useToast } from '../composables/useToast'
+import { useCoresStore } from '../stores/cores'
 import type { System } from '../data/System'
 import { Download, LoaderCircle } from 'lucide-vue-next'
 
@@ -86,41 +87,26 @@ const isOpen = computed({
   set: (value) => emit('update:modelValue', value)
 })
 
-const allCores = ref<CoreInfo[]>([])
-const downloadingCores = ref<Set<string>>(new Set())
-const downloadProgress = ref<Record<string, number>>({})
 const showCoverModal = ref(false)
 const coverOptions = ref<CoverOption[]>([])
 const isSearching = ref(false)
 const isLoadingCovers = ref(false)
 const settingsStore = useSettingsStore()
+const coresStore = useCoresStore()
 const { addToast } = useToast()
 
 const compatibleCores = computed(() => {
-  return allCores.value.filter(core =>
-    core.Database.includes(props.system.Name)
+  return coresStore.cores.filter(core =>
+    core.database.includes(props.system.Name)
   )
 })
 
-const loadCores = async () => {
-  allCores.value = await LibretroApplication.ListCoreInfos()
-}
-
 const downloadCore = async (coreId: string) => {
-  downloadingCores.value.add(coreId)
-  downloadProgress.value[coreId] = 0
-  try {
-    await LibretroApplication.DownloadCore(coreId)
-    await loadCores() // Refresh to update IsDownloaded
-  } finally {
-    downloadingCores.value.delete(coreId)
-    delete downloadProgress.value[coreId]
-  }
+  await coresStore.downloadCore(coreId)
 }
 
 const removeCore = async (coreId: string) => {
-  await LibretroApplication.RemoveCore(coreId)
-  await loadCores() // Refresh to update IsDownloaded
+  await coresStore.removeCore(coreId)
 }
 
 const downloadCover = async () => {
@@ -162,24 +148,4 @@ const selectCover = async (fullUrl: string) => {
     addToast('Error downloading cover: ' + e, 'error')
   }
 }
-
-let progressUnsub: (() => void) | null = null
-let completeUnsub: (() => void) | null = null
-
-onMounted(() => {
-  loadCores()
-  progressUnsub = LibretroApplication.OnDownloadProgress((data) => {
-    downloadProgress.value[data.Name] = data.Progress
-  })
-  completeUnsub = LibretroApplication.OnDownloadComplete((name) => {
-    downloadingCores.value.delete(name)
-    delete downloadProgress.value[name]
-    loadCores()
-  })
-})
-
-onUnmounted(() => {
-  if (progressUnsub) progressUnsub()
-  if (completeUnsub) completeUnsub()
-})
 </script>

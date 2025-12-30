@@ -9,22 +9,13 @@ export const useSettingsStore = defineStore('settings', () => {
   const hasApiKey = computed(() => !!steamGridDBApiKey.value.trim())
 
   const loadSettings = async () => {
-    try {
-      const settings = await LibretroApplication.GetSettings()
-      steamGridDBApiKey.value = settings.SteamGridDBApiKey || ''
-      isLoaded.value = true
-    } catch (e) {
-      console.error('Error loading settings:', e)
-    }
+    const settings = await LibretroApplication.GetSettings()
+    steamGridDBApiKey.value = settings.SteamGridDBApiKey || ''
+    isLoaded.value = true
   }
 
   const saveSettings = async () => {
-    try {
-      await LibretroApplication.SaveSettings({ SteamGridDBApiKey: steamGridDBApiKey.value })
-    } catch (e) {
-      console.error('Error saving settings:', e)
-      throw e
-    }
+    await LibretroApplication.SaveSettings({ SteamGridDBApiKey: steamGridDBApiKey.value })
   }
 
   return {

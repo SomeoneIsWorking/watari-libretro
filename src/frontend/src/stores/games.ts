@@ -9,6 +9,8 @@ export const useGamesStore = defineStore('games', () => {
   const games = shallowArray<Game>([])
   const systems = shallowArray<System>([])
 
+  let loadPromise: Promise<void> | null = null
+
   const getSystemsWithGames = computed(() => {
     const systemNames = [...new Set(games.value.map(g => g.SystemName))]
     return systems.value.filter(s => systemNames.includes(s.Name))
@@ -24,7 +26,7 @@ export const useGamesStore = defineStore('games', () => {
     }))
   }
 
-  const loadLibrary = async () => {
+  const _loadLibrary = async () => {
     await loadSystems()
     const gameInfos = await LibretroApplication.LoadLibrary()
     games.value = await Promise.all(gameInfos.map(async g => {
@@ -35,9 +37,21 @@ export const useGamesStore = defineStore('games', () => {
     }))
   }
 
+  const loadLibrary = async () => {
+    if (!loadPromise) {
+      loadPromise = _loadLibrary()
+    }
+    return loadPromise
+  }
+
+  const reloadLibrary = async () => {
+    loadPromise = _loadLibrary()
+    return loadPromise
+  }
+
   const removeGame = async (path: string) => {
     await LibretroApplication.RemoveGame(path)
-    await loadLibrary()
+    await reloadLibrary()
   }
 
   const getGame = (path: string) => {
@@ -49,6 +63,7 @@ export const useGamesStore = defineStore('games', () => {
     systems,
     getSystemsWithGames,
     loadLibrary,
+    reloadLibrary,
     loadSystems,
     removeGame,
     getGame,

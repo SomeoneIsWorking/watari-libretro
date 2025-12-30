@@ -137,7 +137,7 @@ const proceedWithSystem = async (systemName: string) => {
     Path: currentPath,
     SystemName: systemName,
   });
-  await gamesStore.loadLibrary();
+  await gamesStore.reloadLibrary();
   addToast("Added game", "success");
 };
 
