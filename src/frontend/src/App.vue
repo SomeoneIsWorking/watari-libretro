@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useUIStore } from './stores/ui'
-import { useCoresStore } from './stores/cores'
-import { useGamesStore } from './stores/games'
-import { LibretroApplication } from './generated/libretroApplication'
-import { useToast } from './composables/useToast'
 import TopBar from './components/TopBar.vue'
 import SideMenu from './components/SideMenu.vue'
 import SystemsGrid from './components/SystemsGrid.vue'
@@ -14,25 +9,6 @@ import PlayingView from './components/PlayingView.vue'
 import Toast from './components/Toast.vue'
 
 const uiStore = useUIStore()
-const coresStore = useCoresStore()
-const gamesStore = useGamesStore()
-const { addToast } = useToast()
-
-onMounted(async () => {
-  try {
-    await coresStore.initialize()
-    await gamesStore.loadLibrary()
-  } catch (e) {
-    addToast('Error loading cores: ' + e, 'error')
-  }
-
-  LibretroApplication.OnDownloadProgress((data) => {
-    const core = coresStore.cores.find((c) => c.name === data.Name)
-    if (core) {
-      core.setProgress(data.Progress)
-    }
-  })
-})
 </script>
 
 <template>

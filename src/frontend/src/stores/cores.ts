@@ -12,9 +12,12 @@ export const useCoresStore = defineStore('cores', () => {
   const isMenuOpen = ref(false)
 
   let progressUnsub: (() => void) | null = null
+  let initPromise: Promise<void> | null = null
 
   const initialize = async () => {
-    try {
+    if (initPromise) return initPromise
+
+    initPromise = (async () => {
       const availableCores = await LibretroApplication.ListCoreInfos()
       cores.value = availableCores.map(c => new Core(c.Id, c.Name, c.Database, c.IsDownloaded))
 
@@ -26,10 +29,9 @@ export const useCoresStore = defineStore('cores', () => {
           }
         })
       }
-    } catch (e) {
-      console.error('Error loading cores:', e)
-      throw e
-    }
+    })()
+
+    return initPromise
   }
 
   const downloadCore = async (id: string) => {
@@ -37,27 +39,24 @@ export const useCoresStore = defineStore('cores', () => {
     if (!core) return
 
     core.setDownloading()
-    try {
-      await LibretroApplication.DownloadCore(id)
-      core.setDownloaded()
-    } catch (e) {
-      console.error('Error downloading core:', e)
-      core.setError()
-      throw e
-    }
+    await LibretroApplication.DownloadCore(id)
+    core.setDownloaded()
   }
 
   const loadCore = async (id: string) => {
     const core = cores.value.find(c => c.id === id)
     if (!core) return
 
-    try {
-      await LibretroApplication.LoadCore(id)
-      selectedCore.value = id
-    } catch (e) {
-      console.error('Error loading core:', e)
-      throw e
-    }
+    await LibretroApplication.LoadCore(id)
+    selectedCore.value = id
+  }
+
+  const removeCore = async (id: string) => {
+    const core = cores.value.find(c => c.id === id)
+    if (!core) return
+
+    await LibretroApplication.RemoveCore(id)
+    core.setRemoved()
   }
 
   const getCoreList = () => cores.value
@@ -69,6 +68,7 @@ export const useCoresStore = defineStore('cores', () => {
     isMenuOpen,
     initialize,
     downloadCore,
+    removeCore,
     loadCore,
     getCoreList
   }

@@ -17,6 +17,10 @@ export class Core {
         this.progress.value = 0;
     }
 
+    get isDownloaded() {
+        return this.status.value === 'downloaded';
+    }
+
     setDownloaded() {
         this.status.value = 'downloaded';
         this.progress.value = 100;
