@@ -1,22 +1,18 @@
 using System.Diagnostics;
 using watari_libretro;
 
-class RetroRunner
+class RetroRunner(RetroWrapper retro)
 {
-    private readonly RetroWrapper retro;
-    private readonly TaskCompletionSource tsc = new();
+    private TaskCompletionSource? tsc;
     private bool running;
-
-    public RetroRunner(RetroWrapper retro)
-    {
-        this.retro = retro;
-    }
 
     public void Start()
     {
         running = true;
         Stopwatch stopwatch = new();
         stopwatch.Start();
+        
+        tsc = new TaskCompletionSource();
         Task.Run(() =>
         {
             while (running)
@@ -29,14 +25,16 @@ class RetroRunner
                 stopwatch.Restart();
             }
             retro.Dispose();
-            tsc.SetResult();
+            tsc?.SetResult();
         });
     }
 
-    public Task Stop()
+    public async Task Stop()
     {
+        if (!running) return;
         running = false;
-        return tsc.Task;
+        await (tsc?.Task ?? Task.CompletedTask);
+        tsc = null;
     }
 
     internal bool LoadGame(retro_game_info gameInfo)
