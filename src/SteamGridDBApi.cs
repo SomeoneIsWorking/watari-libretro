@@ -26,7 +26,7 @@ public class SteamGridDBApi
         }
 
         var gameId = searchResults[0].Id;
-        var gridsUrl = $"{BaseUrl}/grids/game/{gameId}";
+        var gridsUrl = $"{BaseUrl}/grids/game/{gameId}?dimensions=600x900,660x930";
         var gridsResult = await _httpClient.GetFromJsonAsync<GridsResponse>(gridsUrl) 
             ?? throw new Exception("Invalid response from SteamGridDB");
         var grids = gridsResult.Data;
@@ -74,5 +74,7 @@ public class Grid
     public string Style { get; set; } = "";
     public string Url { get; set; } = "";
     public string Thumb { get; set; } = "";
+    public int Width { get; set; }
+    public int Height { get; set; }
     // Other fields omitted
 }
