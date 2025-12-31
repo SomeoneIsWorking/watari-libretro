@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using System.Reflection;
 using Microsoft.Extensions.Logging;
 using watari_libretro.libretro;
 
@@ -18,7 +17,6 @@ public unsafe class LibretroCore : IDisposable
     private readonly retro_input_state_callback? _inputStateCallback;
     private readonly retro_environment_callback? _environmentCallback;
     private retro_log_printf_callback? _logCallback;
-
     public event retro_video_refresh_callback? VideoRefresh;
     public event retro_audio_sample_callback? AudioSample;
     public event retro_audio_sample_batch_callback? AudioSampleBatch;
@@ -26,20 +24,25 @@ public unsafe class LibretroCore : IDisposable
     public event retro_input_state_callback? InputState;
     public event retro_environment_callback? Environment;
     public event Action<retro_log_level, string>? Log;
+    public event Action<retro_system_av_info>? SystemAvInfoReceived;
 
     private readonly ILogger _logger;
 
-    public retro_pixel_format PixelFormat { get; private set; }
-    public double SampleRate { get; private set; }
+    public string SystemDirectory { get; set; }
+    public string SaveDirectory { get; set; }
     public Dictionary<string, string> Variables { get; } = [];
     public Dictionary<string, string> VariableDefinitions { get; } = [];
     public static List<uint> EnvironmentCommands { get; } = [];
     public static List<string> QueriedVariables { get; } = [];
+    public retro_pixel_format PixelFormat { get; private set; }
+
     private static readonly HashSet<uint> loggedUnhandledCommands = [];
 
     public LibretroCore(string path, ILogger logger)
     {
         _logger = logger;
+        SystemDirectory = Directories.SystemDir;
+        SaveDirectory = Directories.SaveDir;
         if (handle != IntPtr.Zero) throw new InvalidOperationException("Already loaded");
         handle = NativeLibrary.Load(path);
         functions = new LibretroFunctionPointers(handle);
@@ -138,8 +141,7 @@ public unsafe class LibretroCore : IDisposable
     {
         if (data != IntPtr.Zero)
         {
-            // Return a dummy system directory
-            Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi("/tmp"));
+            Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi(SystemDirectory));
         }
         return true;
     }
@@ -148,8 +150,7 @@ public unsafe class LibretroCore : IDisposable
     {
         if (data != IntPtr.Zero)
         {
-            // Return a dummy save directory
-            Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi("/tmp"));
+            Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi(SaveDirectory));
         }
         return true;
     }
@@ -166,7 +167,7 @@ public unsafe class LibretroCore : IDisposable
         if (data != IntPtr.Zero)
         {
             retro_system_av_info avInfo = Marshal.PtrToStructure<retro_system_av_info>(data);
-            SampleRate = avInfo.timing.sample_rate;
+            SystemAvInfoReceived?.Invoke(avInfo);
         }
         return true;
     }
@@ -201,20 +202,24 @@ public unsafe class LibretroCore : IDisposable
 
     private bool HandleSetVariables(IntPtr data)
     {
-        if (data != IntPtr.Zero)
+        if (data == IntPtr.Zero)
         {
+return true;
+        }
             IntPtr ptr = data;
             while (true)
             {
                 retro_variable var = Marshal.PtrToStructure<retro_variable>(ptr);
-                if (var.key == IntPtr.Zero) break;
+                if (var.key == IntPtr.Zero)
+            {
+break;
+}
                 string key = Marshal.PtrToStringAnsi(var.key) ?? "";
                 string value = Marshal.PtrToStringAnsi(var.value) ?? "";
                 VariableDefinitions[key] = value;
                 _logger.LogInformation("SET_VARIABLES: {Key} = {Value}", key, value);
                 ptr += Marshal.SizeOf<retro_variable>();
-            }
-        }
+                    }
         return true;
     }
 
@@ -230,7 +235,8 @@ public unsafe class LibretroCore : IDisposable
 
     private nuint InstanceAudioSampleBatch(IntPtr data, nuint frames)
     {
-        return AudioSampleBatch?.Invoke(data, frames) ?? 0;
+        AudioSampleBatch?.Invoke(data, frames);
+        return frames;
     }
 
     private void InstanceInputPoll()

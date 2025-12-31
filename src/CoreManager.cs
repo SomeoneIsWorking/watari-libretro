@@ -18,45 +18,35 @@ public class CoreManager
 {
     private readonly WatariContext _context;
     private readonly ILogger _logger;
-    private readonly string coresDir;
-    private readonly string manifestsDir;
-    private readonly string coversDir;
-    private readonly string infoZipCachePath;
-    private readonly string coreOptionsDir;
 
 
     public CoreManager(WatariContext context, ILogger logger)
     {
         _context = context;
         _logger = logger;
-        coresDir = _context.PathCombine("config", "cores");
-        manifestsDir = _context.PathCombine("config", "manifests");
-        coversDir = _context.PathCombine("config", "covers");
-        infoZipCachePath = _context.PathCombine("config", "info.zip");
-        coreOptionsDir = _context.PathCombine("config", "core-options");
     }
 
     private async Task EnsureManifestsExtracted()
     {
-        if (Directory.Exists(manifestsDir) && Directory.GetFiles(manifestsDir, "*.info").Length > 0)
+        if (Directory.Exists(Directories.ManifestsDir) && Directory.GetFiles(Directories.ManifestsDir, "*.info").Length > 0)
         {
             // Already extracted
             return;
         }
 
         // Download the ZIP
-        Directory.CreateDirectory(Path.GetDirectoryName(infoZipCachePath)!);
         using var client = new HttpClient();
         var url = "https://buildbot.libretro.com/assets/frontend/info.zip";
         var response = await client.GetAsync(url);
         response.EnsureSuccessStatusCode();
+        var tempZipPath = Path.GetTempFileName();
         using (var stream = await response.Content.ReadAsStreamAsync())
-        using (var fileStream = File.Create(infoZipCachePath))
+        using (var fileStream = File.Create(tempZipPath))
             await stream.CopyToAsync(fileStream);
 
         // Extract
-        Directory.CreateDirectory(manifestsDir);
-        ZipFile.ExtractToDirectory(infoZipCachePath, manifestsDir, true);
+        ZipFile.ExtractToDirectory(tempZipPath, Directories.ManifestsDir, true);
+        File.Delete(tempZipPath);
     }
 
     public event Action<DownloadProgress>? OnDownloadProgress;
@@ -64,19 +54,18 @@ public class CoreManager
 
     public async Task DownloadCore(string name)
     {
-        var zipPath = Path.Combine(coresDir, $"{name}.zip");
-        Directory.CreateDirectory(coresDir);
+        var zipPath = Path.Combine(Directories.CoresDir, $"{name}.zip");
         await DoDownloadCore(name, zipPath);
 
-        ZipFile.ExtractToDirectory(zipPath, coresDir, true);
-        var dylibPath = Path.Combine(coresDir, $"{name}_libretro.dylib");
+        ZipFile.ExtractToDirectory(zipPath, Directories.CoresDir, true);
+        var dylibPath = Path.Combine(Directories.CoresDir, $"{name}_libretro.dylib");
         File.Delete(zipPath);
         OnDownloadComplete?.Invoke(name);
     }
 
     public void RemoveCore(string name)
     {
-        var dylibPath = Path.Combine(coresDir, $"{name}_libretro.dylib");
+        var dylibPath = Path.Combine(Directories.CoresDir, $"{name}_libretro.dylib");
         if (File.Exists(dylibPath))
         {
             File.Delete(dylibPath);
@@ -109,7 +98,7 @@ public class CoreManager
 
     public Dictionary<string, string> GetManifest(string core)
     {
-        var path = Path.Combine(manifestsDir, $"{core}_libretro.info");
+        var path = Path.Combine(Directories.ManifestsDir, $"{core}_libretro.info");
         if (!File.Exists(path))
         {
             throw new Exception($"Manifest not found for core: {core}");
@@ -133,15 +122,15 @@ public class CoreManager
         return dict;
     }
 
-    public string GetCoresDir() => coresDir;
+    public string GetCoresDir() => Directories.CoresDir;
 
-    public string GetManifestsDir() => manifestsDir;
+    public string GetManifestsDir() => Directories.ManifestsDir;
 
     public async Task<List<CoreInfo>> GetCores()
     {
         await EnsureManifestsExtracted();
 
-        var infoFiles = Directory.GetFiles(manifestsDir, "*_libretro.info");
+        var infoFiles = Directory.GetFiles(Directories.ManifestsDir, "*_libretro.info");
         var cores = new List<CoreInfo>();
         foreach (var file in infoFiles)
         {
@@ -157,7 +146,7 @@ public class CoreManager
             }
             var database = dbStr.Split('|').ToList();
             var supportedExtensions = extStr.Split('|').ToList();
-            var isDownloaded = File.Exists(Path.Combine(coresDir, $"{id}_libretro.dylib"));
+            var isDownloaded = File.Exists(Path.Combine(Directories.CoresDir, $"{id}_libretro.dylib"));
             cores.Add(new CoreInfo(id, corename, supportedExtensions, database, isDownloaded));
         }
         return cores;
@@ -165,7 +154,7 @@ public class CoreManager
 
     public Dictionary<string, string> GetCoreOptions(string coreId)
     {
-        var dylibPath = Path.Combine(coresDir, $"{coreId}_libretro.dylib");
+        var dylibPath = Path.Combine(Directories.CoresDir, $"{coreId}_libretro.dylib");
         if (!File.Exists(dylibPath))
             throw new Exception("Core not downloaded");
 
@@ -177,7 +166,7 @@ public class CoreManager
 
     public Dictionary<string, string> LoadCoreOptionValues(string coreId)
     {
-        var optionsPath = Path.Combine(coreOptionsDir, $"{coreId}.json");
+        var optionsPath = Path.Combine(Directories.CoreOptionsDir, $"{coreId}.json");
         if (File.Exists(optionsPath))
         {
             var json = File.ReadAllText(optionsPath);
@@ -192,11 +181,10 @@ public class CoreManager
         var nonDefaults = values
             .Where(kv => !defaults.TryGetValue(kv.Key, out var def) || kv.Value != def)
             .ToDictionary(kv => kv.Key, kv => kv.Value);
-        Directory.CreateDirectory(coreOptionsDir);
-        var optionsPath = Path.Combine(coreOptionsDir, $"{coreId}.json");
+        var optionsPath = Path.Combine(Directories.CoreOptionsDir, $"{coreId}.json");
         var json = JsonSerializer.Serialize(nonDefaults);
         File.WriteAllText(optionsPath, json);
     }
 
-    public string GetCoversDir() => coversDir;
+    public string GetCoversDir() => Directories.CoversDir;
 }
