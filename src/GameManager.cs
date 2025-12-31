@@ -5,7 +5,7 @@ namespace watari_libretro;
 
 public class GameManager(WatariContext context)
 {
-    private readonly string libraryPath = context.PathCombine("config", "library.json");
+    private readonly string libraryPath = context.PathCombine(Directories.ConfigBaseDir, "library.json");
 
     public void SaveLibrary(List<GameInfo> games)
     {

@@ -62,7 +62,7 @@ public class LibretroApplication
 
     public string? GetCover(string identifier)
     {
-        var fullPath = context.PathCombine($"config/covers/{identifier}.png");
+        var fullPath = Path.Combine(Directories.CoversDir, $"{identifier}.png");
         if (!File.Exists(fullPath)) return null;
         var bytes = File.ReadAllBytes(fullPath);
         return Convert.ToBase64String(bytes);
@@ -70,7 +70,7 @@ public class LibretroApplication
 
     public AppSettings GetSettings()
     {
-        var settingsPath = context.PathCombine("config", "settings.json");
+        var settingsPath = Path.Combine(Directories.ConfigBaseDir, "settings.json");
         if (File.Exists(settingsPath))
         {
             var json = File.ReadAllText(settingsPath);
@@ -81,7 +81,7 @@ public class LibretroApplication
 
     public void SaveSettings(AppSettings settings)
     {
-        var settingsPath = context.PathCombine("config", "settings.json");
+        var settingsPath = Path.Combine(Directories.ConfigBaseDir, "settings.json");
         Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
         var json = JsonSerializer.Serialize(settings);
         File.WriteAllText(settingsPath, json);
@@ -145,9 +145,9 @@ public class LibretroApplication
         runner = await Spawner.Spawn<LibretroService>(logger);
 
         // Register event handlers
-        runner.OnFrame += OnFrameReceived;
-        runner.OnAudio += OnAudioReceived;
-
+        runner.FrameReceived += OnFrameReceived;
+        runner.AudioReceived += OnAudioReceived;
+        runner.SampleRateChanged += OnSampleRateChanged;
         await runner.LoadCore(dylibPath);
 
         // Load and set saved core options
@@ -155,14 +155,16 @@ public class LibretroApplication
         await runner.SetCoreOptions(savedOptions);
     }
 
+    private void OnSampleRateChanged(double sampleRate)
+    {
+        // Initialize audio with correct sample rate
+        logger.LogInformation("Initializing audio with sample rate: {SampleRate}", sampleRate);
+        context.Application.InitAudio(sampleRate);
+    }
+
     private void OnAudioReceived(AudioData audioData)
     {
-        // Samples is now byte[]
-        var bytes = audioData!.Samples;
-        var samples = new short[bytes.Length / 2];
-        Buffer.BlockCopy(bytes, 0, samples, 0, bytes.Length);
-        // Stream audio to application
-        context.Application.PlayAudio(samples);
+        context.Application.PlayAudio(audioData.Samples);
     }
 
     public void LoadGame(string gamePath)
@@ -172,11 +174,6 @@ public class LibretroApplication
             throw new Exception("Load core first");
         }
         runner.LoadGame(gamePath);
-
-        // Initialize audio with correct sample rate
-        var sampleRate = runner.GetSampleRate();
-        logger.LogInformation("Initializing audio with sample rate: {SampleRate}", sampleRate);
-        context.Application.InitAudio(sampleRate);
     }
 
     public async Task Run()
@@ -191,36 +188,22 @@ public class LibretroApplication
     public async Task SendKeyDown(string key)
     {
         logger.LogDebug("Key Down: {Key}", key);
-        try
+        var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
+        buttonStates[id] = true;
+        if (runner != null)
         {
-            var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
-            buttonStates[id] = true;
-            if (runner != null)
-            {
-                await runner.SetInput(key, true);
-            }
-        }
-        catch
-        {
-            // Invalid key, ignore
+            await runner.SetInput(key, true);
         }
     }
 
     public async Task SendKeyUp(string key)
     {
         logger.LogDebug("Key Up: {Key}", key);
-        try
+        var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
+        buttonStates[id] = false;
+        if (runner != null)
         {
-            var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
-            buttonStates[id] = false;
-            if (runner != null)
-            {
-                await runner.SetInput(key, false);
-            }
-        }
-        catch
-        {
-            // Invalid key, ignore
+            await runner.SetInput(key, false);
         }
     }
 
