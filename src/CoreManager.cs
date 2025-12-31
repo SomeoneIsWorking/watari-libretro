@@ -169,7 +169,7 @@ public class CoreManager
         if (!File.Exists(dylibPath))
             throw new Exception("Core not downloaded");
 
-        using var retro = new LibretroCore(dylibPath);
+        using var retro = new LibretroCore(dylibPath, _logger);
         retro.Init();
         var options = retro.VariableDefinitions;
         return options;
