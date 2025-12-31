@@ -16,7 +16,6 @@ public unsafe class LibretroCore : IDisposable
     private readonly retro_input_poll_callback? _inputPollCallback;
     private readonly retro_input_state_callback? _inputStateCallback;
     private readonly retro_environment_callback? _environmentCallback;
-    private retro_log_printf_callback? _logCallback;
     public event retro_video_refresh_callback? VideoRefresh;
     public event retro_audio_sample_callback? AudioSample;
     public event retro_audio_sample_batch_callback? AudioSampleBatch;
@@ -27,6 +26,7 @@ public unsafe class LibretroCore : IDisposable
     public event Action<retro_system_av_info>? SystemAvInfoReceived;
 
     private readonly ILogger _logger;
+    private readonly LibretroLoggingWrapper loggingWrapper;
 
     public string SystemDirectory { get; set; }
     public string SaveDirectory { get; set; }
@@ -46,6 +46,9 @@ public unsafe class LibretroCore : IDisposable
         if (handle != IntPtr.Zero) throw new InvalidOperationException("Already loaded");
         handle = NativeLibrary.Load(path);
         functions = new LibretroFunctionPointers(handle);
+
+        loggingWrapper = new LibretroLoggingWrapper();
+        loggingWrapper.Log += (level, message) => Log?.Invoke(level, message);
 
         // Automatically register callbacks to fire events
         _videoRefreshCallback = new retro_video_refresh_callback(InstanceVideoRefresh);
@@ -134,6 +137,7 @@ public unsafe class LibretroCore : IDisposable
             NativeLibrary.Free(handle);
             handle = IntPtr.Zero;
         }
+        loggingWrapper.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -174,8 +178,7 @@ public unsafe class LibretroCore : IDisposable
 
     private bool HandleGetLogInterface(IntPtr data)
     {
-        _logCallback = new retro_log_printf_callback(InstanceLog);
-        retro_log_callback logCallback = new() { log = Marshal.GetFunctionPointerForDelegate(_logCallback) };
+        retro_log_callback logCallback = new() { log = loggingWrapper.LogFunctionPointer };
         Marshal.StructureToPtr(logCallback, data, false);
         return true;
     }
@@ -204,22 +207,22 @@ public unsafe class LibretroCore : IDisposable
     {
         if (data == IntPtr.Zero)
         {
-return true;
+            return true;
         }
-            IntPtr ptr = data;
-            while (true)
+        IntPtr ptr = data;
+        while (true)
+        {
+            retro_variable var = Marshal.PtrToStructure<retro_variable>(ptr);
+            if (var.key == IntPtr.Zero)
             {
-                retro_variable var = Marshal.PtrToStructure<retro_variable>(ptr);
-                if (var.key == IntPtr.Zero)
-            {
-break;
-}
-                string key = Marshal.PtrToStringAnsi(var.key) ?? "";
-                string value = Marshal.PtrToStringAnsi(var.value) ?? "";
-                VariableDefinitions[key] = value;
-                _logger.LogInformation("SET_VARIABLES: {Key} = {Value}", key, value);
-                ptr += Marshal.SizeOf<retro_variable>();
-                    }
+                break;
+            }
+            string key = Marshal.PtrToStringAnsi(var.key) ?? "";
+            string value = Marshal.PtrToStringAnsi(var.value) ?? "";
+            VariableDefinitions[key] = value;
+            _logger.LogInformation("SET_VARIABLES: {Key} = {Value}", key, value);
+            ptr += Marshal.SizeOf<retro_variable>();
+        }
         return true;
     }
 
@@ -274,11 +277,5 @@ break;
             loggedUnhandledCommands.Add(cmd);
         }
         return Environment?.Invoke(cmd, data) ?? false;
-    }
-
-    private void InstanceLog(retro_log_level level, IntPtr fmt)
-    {
-        string? message = Marshal.PtrToStringAnsi(fmt);
-        Log?.Invoke(level, message ?? "");
     }
 }
