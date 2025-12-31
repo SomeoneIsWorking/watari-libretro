@@ -20,4 +20,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="NativeLogging/libLoggingWrapper.dylib" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
