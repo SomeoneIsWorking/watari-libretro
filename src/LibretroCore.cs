@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 using watari_libretro.libretro;
 
 namespace watari_libretro;
@@ -26,6 +27,8 @@ public unsafe class LibretroCore : IDisposable
     public event retro_environment_callback? Environment;
     public event Action<retro_log_level, string>? Log;
 
+    private readonly ILogger _logger;
+
     public retro_pixel_format PixelFormat { get; private set; }
     public double SampleRate { get; private set; }
     public Dictionary<string, string> Variables { get; } = [];
@@ -34,8 +37,9 @@ public unsafe class LibretroCore : IDisposable
     public static List<string> QueriedVariables { get; } = [];
     private static readonly HashSet<uint> loggedUnhandledCommands = [];
 
-    public LibretroCore(string path)
+    public LibretroCore(string path, ILogger logger)
     {
+        _logger = logger;
         if (handle != IntPtr.Zero) throw new InvalidOperationException("Already loaded");
         handle = NativeLibrary.Load(path);
         functions = new LibretroFunctionPointers(handle);
@@ -83,9 +87,9 @@ public unsafe class LibretroCore : IDisposable
 
     public bool LoadGame(retro_game_info gameInfo)
     {
-        Log?.Invoke(retro_log_level.RETRO_LOG_INFO, "Calling retro_load_game");
+        _logger.LogInformation("Calling retro_load_game");
         bool result = functions.retro_load_game((IntPtr)Unsafe.AsPointer(ref gameInfo));
-        Log?.Invoke(retro_log_level.RETRO_LOG_INFO, $"retro_load_game returned {result}");
+        _logger.LogInformation("retro_load_game returned {Result}", result);
         return result;
     }
 
@@ -120,24 +124,6 @@ public unsafe class LibretroCore : IDisposable
 
     public nuint GetMemorySize(uint id) => functions.retro_get_memory_size(id);
 
-    private static string GetEnvironmentCommandName(uint cmd)
-    {
-        var fields = typeof(RetroEnvironment).GetFields(BindingFlags.Public | BindingFlags.Static);
-        foreach (var field in fields)
-        {
-            if (field.FieldType != typeof(uint))
-            {
-                continue;
-            }
-            uint fieldValue = (uint)field.GetValue(null)! & ~RetroEnvironment.RETRO_ENVIRONMENT_EXPERIMENTAL;
-            if (fieldValue == cmd)
-            {
-                return field.Name;
-            }
-        }
-        return $"Unknown ({cmd})";
-    }
-
     public void Dispose()
     {
         if (handle != IntPtr.Zero)
@@ -146,6 +132,90 @@ public unsafe class LibretroCore : IDisposable
             handle = IntPtr.Zero;
         }
         GC.SuppressFinalize(this);
+    }
+
+    private bool HandleGetSystemDirectory(IntPtr data)
+    {
+        if (data != IntPtr.Zero)
+        {
+            // Return a dummy system directory
+            Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi("/tmp"));
+        }
+        return true;
+    }
+
+    private bool HandleGetSaveDirectory(IntPtr data)
+    {
+        if (data != IntPtr.Zero)
+        {
+            // Return a dummy save directory
+            Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi("/tmp"));
+        }
+        return true;
+    }
+
+    private bool HandleSetPixelFormat(IntPtr data)
+    {
+        PixelFormat = (retro_pixel_format)Marshal.ReadInt32(data);
+        _logger.LogInformation("SET_PIXEL_FORMAT: {PixelFormat}", PixelFormat);
+        return true;
+    }
+
+    private bool HandleSetSystemAvInfo(IntPtr data)
+    {
+        if (data != IntPtr.Zero)
+        {
+            retro_system_av_info avInfo = Marshal.PtrToStructure<retro_system_av_info>(data);
+            SampleRate = avInfo.timing.sample_rate;
+        }
+        return true;
+    }
+
+    private bool HandleGetLogInterface(IntPtr data)
+    {
+        _logCallback = new retro_log_printf_callback(InstanceLog);
+        retro_log_callback logCallback = new() { log = Marshal.GetFunctionPointerForDelegate(_logCallback) };
+        Marshal.StructureToPtr(logCallback, data, false);
+        return true;
+    }
+
+    private bool HandleGetVariable(IntPtr data)
+    {
+        if (data == IntPtr.Zero)
+        {
+            return false;
+        }
+        var variable = Marshal.PtrToStructure<retro_variable>(data);
+        string key = Marshal.PtrToStringAnsi(variable.key) ?? "";
+        QueriedVariables.Add(key);
+        _logger.LogDebug("GET_VARIABLE: {Key}", key);
+        if (Variables.TryGetValue(key, out string? value))
+        {
+            variable.value = Marshal.StringToHGlobalAnsi(value);
+            Marshal.StructureToPtr(variable, data, false);
+            _logger.LogDebug("SET_VARIABLE: {Key} = {Value}", key, value);
+            return true;
+        }
+        return false;
+    }
+
+    private bool HandleSetVariables(IntPtr data)
+    {
+        if (data != IntPtr.Zero)
+        {
+            IntPtr ptr = data;
+            while (true)
+            {
+                retro_variable var = Marshal.PtrToStructure<retro_variable>(ptr);
+                if (var.key == IntPtr.Zero) break;
+                string key = Marshal.PtrToStringAnsi(var.key) ?? "";
+                string value = Marshal.PtrToStringAnsi(var.value) ?? "";
+                VariableDefinitions[key] = value;
+                _logger.LogInformation("SET_VARIABLES: {Key} = {Value}", key, value);
+                ptr += Marshal.SizeOf<retro_variable>();
+            }
+        }
+        return true;
     }
 
     private void InstanceVideoRefresh(IntPtr data, uint width, uint height, nuint pitch)
@@ -178,86 +248,23 @@ public unsafe class LibretroCore : IDisposable
         cmd &= ~RetroEnvironment.RETRO_ENVIRONMENT_EXPERIMENTAL;
         EnvironmentCommands.Add(cmd);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY)
-        {
-            if (data != IntPtr.Zero)
-            {
-                // Return a dummy system directory
-                Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi("/tmp"));
-            }
-            return true;
-        }
+            return HandleGetSystemDirectory(data);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY)
-        {
-            if (data != IntPtr.Zero)
-            {
-                // Return a dummy save directory
-                Marshal.WriteIntPtr(data, Marshal.StringToHGlobalAnsi("/tmp"));
-            }
-            return true;
-        }
+            return HandleGetSaveDirectory(data);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_SET_PIXEL_FORMAT)
-        {
-            PixelFormat = (retro_pixel_format)Marshal.ReadInt32(data);
-            Log?.Invoke(retro_log_level.RETRO_LOG_INFO, $"SET_PIXEL_FORMAT: {PixelFormat}");
-            return true;
-        }
+            return HandleSetPixelFormat(data);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO)
-        {
-            if (data != IntPtr.Zero)
-            {
-                retro_system_av_info avInfo = Marshal.PtrToStructure<retro_system_av_info>(data);
-                SampleRate = avInfo.timing.sample_rate;
-            }
-            return true;
-        }
+            return HandleSetSystemAvInfo(data);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_GET_LOG_INTERFACE)
-        {
-            _logCallback = new retro_log_printf_callback(InstanceLog);
-            retro_log_callback logCallback = new() { log = Marshal.GetFunctionPointerForDelegate(_logCallback) };
-            Marshal.StructureToPtr(logCallback, data, false);
-            return true;
-        }
+            return HandleGetLogInterface(data);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_GET_VARIABLE)
-        {
-            if (data == IntPtr.Zero)
-            {
-                return false;
-            }
-            var variable = Marshal.PtrToStructure<retro_variable>(data);
-            string key = Marshal.PtrToStringAnsi(variable.key) ?? "";
-            QueriedVariables.Add(key);
-            Log?.Invoke(retro_log_level.RETRO_LOG_INFO, $"GET_VARIABLE: {key}");
-            if (Variables.TryGetValue(key, out string? value))
-            {
-                variable.value = Marshal.StringToHGlobalAnsi(value);
-                Marshal.StructureToPtr(variable, data, false);
-                Log?.Invoke(retro_log_level.RETRO_LOG_INFO, $"SET_VARIABLE: {key} = {value}");
-                return true;
-            }
-            return false;
-        }
+            return HandleGetVariable(data);
         if (cmd == RetroEnvironment.RETRO_ENVIRONMENT_SET_VARIABLES)
-        {
-            if (data != IntPtr.Zero)
-            {
-                IntPtr ptr = data;
-                while (true)
-                {
-                    retro_variable var = Marshal.PtrToStructure<retro_variable>(ptr);
-                    if (var.key == IntPtr.Zero) break;
-                    string key = Marshal.PtrToStringAnsi(var.key) ?? "";
-                    string value = Marshal.PtrToStringAnsi(var.value) ?? "";
-                    VariableDefinitions[key] = value;
-                    Log?.Invoke(retro_log_level.RETRO_LOG_INFO, $"SET_VARIABLES: {key} = {value}");
-                    ptr += Marshal.SizeOf<retro_variable>();
-                }
-            }
-            return true;
-        }
+            return HandleSetVariables(data);
 
         if (!loggedUnhandledCommands.Contains(cmd))
         {
-            Log?.Invoke(retro_log_level.RETRO_LOG_WARN, $"Unhandled environment cmd: {GetEnvironmentCommandName(cmd)}");
+            _logger.LogWarning("Unhandled environment cmd: {CommandName}", RetroEnvironment.GetEnvironmentCommandName(cmd));
             loggedUnhandledCommands.Add(cmd);
         }
         return Environment?.Invoke(cmd, data) ?? false;

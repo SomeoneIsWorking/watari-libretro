@@ -1,5 +1,7 @@
 namespace watari_libretro.libretro;
 
+using System.Reflection;
+
 public static class RetroEnvironment
 {
     /// <summary>
@@ -393,4 +395,28 @@ public static class RetroEnvironment
     /// Returns an interface for accessing network packets.
     /// </summary>
     public const uint RETRO_ENVIRONMENT_SET_NETPACKET_INTERFACE = 78;
+
+    public static string GetEnvironmentCommandName(uint cmd)
+    {
+        var fields = typeof(RetroEnvironment).GetFields(BindingFlags.Public | BindingFlags.Static);
+        foreach (var field in fields)
+        {
+            if (field.FieldType != typeof(uint))
+            {
+                continue;
+            }
+            uint fieldValue = (uint)field.GetValue(null)!;
+            uint maskedValue = fieldValue & ~RETRO_ENVIRONMENT_EXPERIMENTAL;
+            if (maskedValue == cmd)
+            {
+                string name = field.Name;
+                if ((fieldValue & RETRO_ENVIRONMENT_EXPERIMENTAL) != 0)
+                {
+                    name += " (experimental)";
+                }
+                return name;
+            }
+        }
+        return $"Unknown ({cmd})";
+    }
 }

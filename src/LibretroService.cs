@@ -9,7 +9,6 @@ namespace watari_libretro;
 #pragma warning disable CA1070 // Do not declare event fields as virtual
 public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
 {
-    private readonly ILogger<LibretroService> logger = logger;
     private LibretroCore? retro;
     private RetroRunner? runner;
     private readonly Dictionary<uint, bool> buttonStates = [];
@@ -30,7 +29,7 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
 
     public virtual Task LoadCore(string corePath)
     {
-        retro = new LibretroCore(corePath);
+        retro = new LibretroCore(corePath, logger);
         retro.Log += LogMessage;
         retro.VideoRefresh += (data, w, h, pitch) =>
         {
@@ -164,7 +163,6 @@ public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
         {
             var id = (uint)(retro_device_id_joypad)Enum.Parse(typeof(retro_device_id_joypad), key);
             buttonStates[id] = down;
-            logger.LogInformation($"Input set: {key} = {down}");
         }
         catch (Exception ex)
         {
