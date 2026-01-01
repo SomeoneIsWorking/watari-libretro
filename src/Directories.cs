@@ -8,6 +8,8 @@ public static class Directories
 
     public static string ManifestsDir => EnsureDir(Path.Combine(ConfigBaseDir, "manifests"));
 
+    public static string DatabaseDir => EnsureDir(Path.Combine(ConfigBaseDir, "database"));
+
     public static string CoversDir => EnsureDir(Path.Combine(ConfigBaseDir, "covers"));
 
     public static string CoreOptionsDir => EnsureDir(Path.Combine(ConfigBaseDir, "core-options"));
