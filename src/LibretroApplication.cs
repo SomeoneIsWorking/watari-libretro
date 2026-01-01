@@ -15,6 +15,8 @@ public class LibretroApplication
     private readonly CoreManager coreManager;
     private readonly GameManager gameManager;
     private readonly SystemManager systemManager;
+    private readonly DatabaseManager databaseManager;
+    private GameIdentificationService gameIdentificationService;
     private SteamGridDBApi? _steamGridDBApi;
     private LibretroService? runner;
     public event Action<FrameData> OnFrameReceived = delegate { };
@@ -28,15 +30,26 @@ public class LibretroApplication
         coreManager = new CoreManager(context, logger);
         gameManager = new GameManager(context);
         systemManager = new SystemManager(coreManager);
+        databaseManager = new DatabaseManager(logger);
         coreManager.OnDownloadProgress += (p) => OnDownloadProgress?.Invoke(p);
-        coreManager.OnDownloadComplete += (n) => OnDownloadComplete?.Invoke(n);
+        coreManager.OnDownloadComplete += (n) => {
+            systemManager.InvalidateCache();
+            OnDownloadComplete?.Invoke(n);
+        };
         var settings = GetSettings();
         _steamGridDBApi = !string.IsNullOrEmpty(settings.SteamGridDBApiKey) ? new SteamGridDBApi(settings.SteamGridDBApiKey) : null;
+        gameIdentificationService = new GameIdentificationService(systemManager, databaseManager, logger);
     }
+
+    public async Task<GameInfo> IdentifyGame(string path) => await gameIdentificationService.IdentifyGame(path);
 
     public async Task DownloadCore(string name) => await coreManager.DownloadCore(name);
 
-    public void RemoveCore(string name) => coreManager.RemoveCore(name);
+    public void RemoveCore(string name)
+    {
+        coreManager.RemoveCore(name);
+        systemManager.InvalidateCache();
+    }
 
     public async Task<List<CoreInfo>> ListCoreInfos() => await coreManager.GetCores();
 
@@ -86,6 +99,7 @@ public class LibretroApplication
         var json = JsonSerializer.Serialize(settings);
         File.WriteAllText(settingsPath, json);
         _steamGridDBApi = !string.IsNullOrEmpty(settings.SteamGridDBApiKey) ? new SteamGridDBApi(settings.SteamGridDBApiKey) : null;
+        gameIdentificationService = new GameIdentificationService(systemManager, databaseManager, logger);
     }
 
     public async Task<List<CoverOption>> SearchCovers(string name)

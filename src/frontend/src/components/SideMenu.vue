@@ -90,36 +90,36 @@ const navigateTo = (view: string) => {
 };
 
 const addGame = async () => {
-  try {
-    const path = await watari.openFileDialog(
-      "nes,snes,gb,gba,md,gen,z64,n64,cue,bin,iso"
-    );
-    if (!path) {
-      throw new Error("No file selected");
-    }
+  const path = await watari.openFileDialog(
+    "nes,snes,gb,gba,md,gen,z64,n64,cue,bin,iso"
+  );
+  if (!path) {
+    throw new Error("No file selected");
+  }
+
+  const identifiedGame = await LibretroApplication.IdentifyGame(path);
+  currentPath = path;
+
+  if (identifiedGame.SystemName !== "Unknown") {
+    await LibretroApplication.AddGame(identifiedGame);
+    await gamesStore.reloadLibrary();
+    addToast(`Added ${identifiedGame.Name}`, "success");
+  } else {
     await gamesStore.loadSystems();
-    currentPath = path;
     const ext = path.split(".").pop()?.toLowerCase() || "";
     applicableSystems.value = gamesStore.systems.filter((s) =>
       s.Extensions.some((e) => e.toLowerCase() === ext)
     );
-    console.log(
-      `Applicable systems for extension .${ext}: ${applicableSystems.value
-        .map((s) => s.Name)
-        .join(", ")}`
-    );
     if (applicableSystems.value.length === 1) {
-      console.log(
-        `Single applicable system found: ${applicableSystems.value[0]!.Name}`
+      await proceedWithSystem(
+        applicableSystems.value[0]!.Name,
+        identifiedGame.Name
       );
-      await proceedWithSystem(applicableSystems.value[0]!.Name);
     } else if (applicableSystems.value.length > 1) {
       showModal.value = true;
     } else {
       addToast("No system found for this file type", "error");
     }
-  } catch (e) {
-    addToast("Error adding game: " + e, "error");
   }
   uiStore.toggleMenu();
 };
@@ -129,8 +129,8 @@ const selectSystem = async (systemName: string) => {
   await proceedWithSystem(systemName);
 };
 
-const proceedWithSystem = async (systemName: string) => {
-  const name = getGameName(currentPath);
+const proceedWithSystem = async (systemName: string, gameName?: string) => {
+  const name = gameName || getGameName(currentPath);
   await LibretroApplication.AddGame({
     CoverName: "",
     Name: name,

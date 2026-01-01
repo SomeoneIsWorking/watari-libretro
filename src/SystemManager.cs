@@ -1,11 +1,16 @@
+using System.Linq;
+
 namespace watari_libretro;
 
 public class SystemManager(CoreManager coreManager)
 {
     private readonly CoreManager coreManager = coreManager;
+    private List<SystemInfo>? _cachedSystems;
 
     public async Task<List<SystemInfo>> GetSystems()
     {
+        if (_cachedSystems != null) return _cachedSystems;
+
         var cores = await coreManager.GetCores();
         var systems = new Dictionary<string, SystemInfo>();
         foreach (var core in cores)
@@ -23,6 +28,9 @@ public class SystemManager(CoreManager coreManager)
                 }
             }
         }
-        return systems.Values.ToList();
+        _cachedSystems = systems.Values.ToList();
+        return _cachedSystems;
     }
+
+    public void InvalidateCache() => _cachedSystems = null;
 }
