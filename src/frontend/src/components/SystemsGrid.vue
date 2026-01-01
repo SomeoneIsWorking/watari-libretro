@@ -1,5 +1,5 @@
 <template>
-  <div class="p-8">
+  <div class="game-grid">
     <div v-if="systemsWithGames.length === 0" class="empty-state">
       <p>No systems with games. Add some games to get started!</p>
     </div>

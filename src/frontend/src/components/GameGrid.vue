@@ -1,10 +1,10 @@
 <template>
   <div class="game-grid">
-    <div class="flex items-center relative mb-8 gap-4" v-if="uiStore.currentSystem">
-      <button @click="uiStore.backToSystems" class="back-btn">
-        <ArrowLeft class="icon-small" />
+    <div class="header" v-if="uiStore.currentSystem">
+      <button @click="uiStore.backToSystems" class="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-accent cursor-pointer" title="Back to Systems">
+        <ArrowLeft :size="24" />
       </button>
-      <h2 class="text-white">{{ uiStore.currentSystem?.Name }}</h2>
+      <h2 class="text-2xl font-bold">{{ uiStore.currentSystem?.Name }}</h2>
     </div>
     <div v-if="filteredGames.length === 0" class="empty-state">
       <p>
