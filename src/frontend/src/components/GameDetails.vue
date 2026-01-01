@@ -1,6 +1,11 @@
 <template>
   <div class="game-details">
-    <button @click="backToGames" class="back-btn mb-4">← Back</button>
+    <div class="header mb-8">
+      <button @click="backToGames" class="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors text-accent cursor-pointer" title="Back to Games">
+        <ArrowLeft :size="24" />
+      </button>
+      <h2 class="text-2xl font-bold">Game Details</h2>
+    </div>
     <div v-if="game" class="details-content">
       <div class="cover-section relative">
         <img v-if="coverData" :src="coverData" alt="Cover" class="large-cover w-[300px] h-[450px] overflow-hidden" />
@@ -86,7 +91,7 @@ import { useCoresStore } from '../stores/cores'
 import { useGamesStore } from '../stores/games'
 import { useToast } from '../composables/useToast'
 import { LibretroApplication } from '../generated/libretroApplication'
-import { Pencil, Download, LoaderCircle, Settings } from 'lucide-vue-next'
+import { Pencil, Download, LoaderCircle, Settings, ArrowLeft } from 'lucide-vue-next'
 import type { CoverOption } from '../generated/models'
 import CoverSearchModal from './CoverSearchModal.vue'
 import CoreSettingsModal from './CoreSettingsModal.vue'

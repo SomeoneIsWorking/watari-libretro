@@ -90,7 +90,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .game-card {
-  @apply relative w-48 h-72 bg-gray-700 rounded-lg cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl overflow-hidden;
+  @apply relative w-full aspect-[2/3] bg-gray-700 rounded-lg cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl overflow-hidden;
 }
 
 .game-cover {
@@ -109,12 +109,13 @@ input[type="range"]::-moz-range-thumb {
   @apply m-0 text-base;
 }
 
-.systems-grid {
-  @apply grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4;
+.systems-grid,
+.games-grid {
+  @apply grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-6;
 }
 
 .system-card {
-  @apply relative w-48 h-72 bg-gray-800 rounded-lg cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl overflow-hidden;
+  @apply relative w-full aspect-[2/3] bg-gray-800 rounded-lg cursor-pointer transition-all duration-200 shadow-lg hover:-translate-y-1 hover:shadow-2xl overflow-hidden;
 }
 
 .system-cover {
@@ -130,7 +131,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .card-overlay {
-  @apply absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 transition-opacity duration-300 text-center;
+  @apply absolute bottom-0 left-0 right-0 bg-black/70 text-white p-2 pb-4 transition-opacity duration-300 text-center;
 }
 
 .system-name {
@@ -425,26 +426,6 @@ input[type="range"]::-moz-range-thumb {
 
 progress {
   @apply flex-1 h-2;
-}
-
-.header {
-  @apply bg-gray-700 p-4 border-b-2 border-gray-600 flex justify-between items-center;
-}
-
-.header h1 {
-  @apply m-0 text-accent text-xl;
-}
-
-.main-header {
-  @apply bg-gray-700 p-4 border-b-2 border-gray-600 flex justify-between items-center;
-}
-
-.main-header h1 {
-  @apply m-0 text-accent text-xl;
-}
-
-.right-section {
-  @apply flex items-center gap-4;
 }
 
 .btn {

@@ -5,7 +5,7 @@
       <div v-else class="placeholder-cover">
         {{ game.Name.charAt(0).toUpperCase() }}
       </div>
-      <div class="card-overlay card-overlay opacity-0 group-hover:opacity-90">
+      <div class="card-overlay opacity-0 group-hover:opacity-90">
         {{ game.Name }}
       </div>
     </div>

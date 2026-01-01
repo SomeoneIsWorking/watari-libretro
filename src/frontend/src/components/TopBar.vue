@@ -8,7 +8,7 @@
         v-model="uiStore.searchQuery"
         type="text"
         placeholder="Search games..."
-        class="p-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
+        class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:border-blue-500"
       />
     </div>
     <div class="flex gap-2">
