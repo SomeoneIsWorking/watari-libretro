@@ -13,21 +13,13 @@ public record CoreInfo(
     bool IsDownloaded
 );
 
-public class CoreManager
+public class CoreManager(ILogger logger)
 {
-    private readonly WatariContext _context;
-    private readonly ILogger _logger;
-
-
-    public CoreManager(WatariContext context, ILogger logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+    private readonly string manifestDir = Directories.ManifestsDir;
 
     private async Task EnsureManifestsExtracted()
     {
-        if (Directory.Exists(Directories.ManifestsDir) && Directory.GetFiles(Directories.ManifestsDir, "*.info").Length > 0)
+        if (Directory.Exists(manifestDir) && Directory.GetFiles(manifestDir, "*.info").Length > 0)
         {
             // Already extracted
             return;
@@ -44,7 +36,7 @@ public class CoreManager
             await stream.CopyToAsync(fileStream);
 
         // Extract
-        ZipFile.ExtractToDirectory(tempZipPath, Directories.ManifestsDir, true);
+        ZipFile.ExtractToDirectory(tempZipPath, manifestDir, true);
         File.Delete(tempZipPath);
     }
 
@@ -97,7 +89,7 @@ public class CoreManager
 
     public Dictionary<string, string> GetManifest(string core)
     {
-        var path = Path.Combine(Directories.ManifestsDir, $"{core}_libretro.info");
+        var path = Path.Combine(manifestDir, $"{core}_libretro.info");
         if (!File.Exists(path))
         {
             throw new Exception($"Manifest not found for core: {core}");
@@ -123,13 +115,13 @@ public class CoreManager
 
     public string GetCoresDir() => Directories.CoresDir;
 
-    public string GetManifestsDir() => Directories.ManifestsDir;
+    public string GetManifestsDir() => manifestDir;
 
     public async Task<List<CoreInfo>> GetCores()
     {
         await EnsureManifestsExtracted();
 
-        var infoFiles = Directory.GetFiles(Directories.ManifestsDir, "*_libretro.info");
+        var infoFiles = Directory.GetFiles(manifestDir, "*_libretro.info");
         var cores = new List<CoreInfo>();
         foreach (var file in infoFiles)
         {
@@ -157,7 +149,7 @@ public class CoreManager
         if (!File.Exists(dylibPath))
             throw new Exception("Core not downloaded");
 
-        using var retro = new LibretroCore(dylibPath, _logger);
+        using var retro = new LibretroCore(dylibPath, logger);
         retro.Init();
         var options = retro.VariableDefinitions;
         return options;

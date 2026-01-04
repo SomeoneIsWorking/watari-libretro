@@ -2,9 +2,9 @@ using System.Text.Json;
 
 namespace Watari.Libretro;
 
-public class GameManager(WatariContext context)
+public class GameManager
 {
-    private readonly string libraryPath = context.PathCombine(Directories.ConfigBaseDir, "library.json");
+    private readonly string libraryPath = Path.Combine(Directories.ConfigBaseDir, "library.json");
 
     public void SaveLibrary(List<GameInfo> games)
     {

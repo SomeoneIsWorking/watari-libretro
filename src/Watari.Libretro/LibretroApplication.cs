@@ -26,8 +26,8 @@ public class LibretroApplication
     {
         this.context = context;
         this.logger = logger;
-        coreManager = new CoreManager(context, logger);
-        gameManager = new GameManager(context);
+        coreManager = new CoreManager(logger);
+        gameManager = new GameManager();
         systemManager = new SystemManager(coreManager);
         databaseManager = new DatabaseManager(logger);
         coreManager.OnDownloadProgress += (p) => OnDownloadProgress?.Invoke(p);
