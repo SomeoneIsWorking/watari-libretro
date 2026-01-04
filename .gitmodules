@@ -1,6 +1,6 @@
-[submodule "SeparateProcess"]
-	path = SeparateProcess
+[submodule "submodule/SeparateProcess"]
+	path = submodule/SeparateProcess
 	url = https://github.com/SomeoneIsWorking/SeparateProcess.git
-[submodule "Watari"]
-	path = Watari
+[submodule "submodule/Watari"]
+	path = submodule/Watari
 	url = https://github.com/SomeoneIsWorking/Watari.git
