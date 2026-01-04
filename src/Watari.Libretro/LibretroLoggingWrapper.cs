@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.IO;
 using Watari.Libretro.Bindings;
 
 namespace Watari.Libretro;

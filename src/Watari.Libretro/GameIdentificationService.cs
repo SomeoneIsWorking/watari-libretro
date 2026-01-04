@@ -1,7 +1,4 @@
-using System.Text.RegularExpressions;
-using System.Linq;
 using Microsoft.Extensions.Logging;
-using Watari.Libretro;
 
 namespace Watari.Libretro;
 

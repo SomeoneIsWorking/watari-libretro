@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using Watari;
 using Watari.Libretro.Types;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;

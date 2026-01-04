@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Watari;
 
 namespace Watari.Libretro;
 

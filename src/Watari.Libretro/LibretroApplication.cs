@@ -1,9 +1,7 @@
 using System.Text.Json;
 using Watari.Libretro.Types;
-using Watari;
 using SeparateProcess;
 using Microsoft.Extensions.Logging;
-using Watari.Libretro;
 using Watari.Libretro.Bindings;
 
 namespace Watari.Libretro;
