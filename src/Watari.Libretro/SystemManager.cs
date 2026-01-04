@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace Watari.Libretro;
 
 public class SystemManager(CoreManager coreManager)
