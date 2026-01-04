@@ -1,4 +1,4 @@
-namespace watari_libretro.Types;
+namespace Watari.Libretro.Types;
 
 public class DownloadProgress
 {

@@ -1,10 +1,10 @@
 using System.IO.Compression;
 using Watari;
-using watari_libretro.Types;
+using Watari.Libretro.Types;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public record CoreInfo(
     string Id,

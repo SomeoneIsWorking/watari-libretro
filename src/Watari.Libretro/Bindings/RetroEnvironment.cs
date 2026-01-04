@@ -1,4 +1,4 @@
-namespace watari_libretro.libretro;
+namespace Watari.Libretro.Bindings;
 
 using System.Reflection;
 

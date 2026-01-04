@@ -1,6 +1,6 @@
 using System.Linq;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class SystemManager(CoreManager coreManager)
 {

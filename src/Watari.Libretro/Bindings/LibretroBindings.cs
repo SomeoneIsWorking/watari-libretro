@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 
-namespace watari_libretro.libretro;
+namespace Watari.Libretro.Bindings;
+
+#pragma warning disable IDE1006 // Naming Styles
 
 public enum retro_pixel_format : uint
 {

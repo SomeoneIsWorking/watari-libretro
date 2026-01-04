@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using watari_libretro.libretro;
+using Watari.Libretro.Bindings;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class RetroRunner(LibretroCore retro)
 {

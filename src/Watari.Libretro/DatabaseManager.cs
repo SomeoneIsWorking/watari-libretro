@@ -2,7 +2,7 @@ using System.Xml.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public record DatabaseEntry(string Name, string RomName, string Crc, string Md5, string Sha1);
 

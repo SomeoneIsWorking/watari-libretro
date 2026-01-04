@@ -1,10 +1,10 @@
 using System.Runtime.InteropServices;
-using watari_libretro.Types;
+using Watari.Libretro.Types;
 using Microsoft.Extensions.Logging;
 using SeparateProcess;
-using watari_libretro.libretro;
+using Watari.Libretro.Bindings;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 #pragma warning disable CA1070 // Do not declare event fields as virtual
 public class LibretroService(ILogger<LibretroService> logger) : ISeparateProcess
