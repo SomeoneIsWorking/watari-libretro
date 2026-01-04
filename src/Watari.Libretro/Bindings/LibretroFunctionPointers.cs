@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace watari_libretro.libretro;
+namespace Watari.Libretro.Bindings;
 
 public class LibretroFunctionPointers(IntPtr handle)
 {

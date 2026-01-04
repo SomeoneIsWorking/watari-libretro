@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public record GameInfo(string Name, string Path, string SystemName)
 {

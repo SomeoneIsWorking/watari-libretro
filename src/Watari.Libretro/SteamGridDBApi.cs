@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class SteamGridDBApi
 {

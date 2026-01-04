@@ -1,11 +1,12 @@
 using System.Text.Json;
-using watari_libretro.Types;
+using Watari.Libretro.Types;
 using Watari;
 using SeparateProcess;
 using Microsoft.Extensions.Logging;
-using watari_libretro.libretro;
+using Watari.Libretro;
+using Watari.Libretro.Bindings;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class LibretroApplication
 {

@@ -1,6 +1,6 @@
 using MessagePack;
 
-namespace watari_libretro.Types;
+namespace Watari.Libretro.Types;
 
 [MessagePackObject]
 public class FrameData

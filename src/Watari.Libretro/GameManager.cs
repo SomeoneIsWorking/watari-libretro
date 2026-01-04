@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Watari;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class GameManager(WatariContext context)
 {

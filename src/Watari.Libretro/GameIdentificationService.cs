@@ -1,8 +1,9 @@
 using System.Text.RegularExpressions;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using Watari.Libretro;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class GameIdentificationService(SystemManager systemManager, DatabaseManager databaseManager, ILogger logger)
 {

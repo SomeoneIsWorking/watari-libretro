@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 using System.IO;
-using watari_libretro.libretro;
+using Watari.Libretro.Bindings;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public class LibretroLoggingWrapper : IDisposable
 {

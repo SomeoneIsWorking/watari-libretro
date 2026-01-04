@@ -1,5 +1,5 @@
 ﻿using Watari;
-using watari_libretro;
+using Watari.Libretro;
 using SeparateProcess;
 using Microsoft.Extensions.Logging;
 

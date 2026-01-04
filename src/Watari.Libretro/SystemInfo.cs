@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public record SystemInfo(string Name, List<string> Extensions)
 {

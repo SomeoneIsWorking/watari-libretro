@@ -1,4 +1,4 @@
-namespace watari_libretro;
+namespace Watari.Libretro;
 
 public static class Directories
 {
